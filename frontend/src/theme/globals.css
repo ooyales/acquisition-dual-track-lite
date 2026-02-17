@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Hind', system-ui, sans-serif;
+  color: #333;
+  background: #f5f5f5;
+}
+
+.eaw-section {
+  @apply bg-white rounded shadow-eaw mb-4 overflow-hidden;
+}
+
+.eaw-card {
+  @apply bg-white rounded shadow-eaw p-4;
+}
+
+.btn-primary {
+  background-color: #337ab7;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s;
+}
+.btn-primary:hover {
+  background-color: #23527c;
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: white;
+  color: #333;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  transition: background-color 0.15s;
+}
+.btn-secondary:hover {
+  background-color: #f9f9f9;
+}
+
+.btn-danger {
+  background-color: #d9534f;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s;
+}
+.btn-danger:hover {
+  background-color: #c9302c;
+}
+
+.btn-success {
+  background-color: #5cb85c;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+.btn-success:hover {
+  background-color: #449d44;
+}
+
+.input-field {
+  @apply px-3 py-2 text-sm border border-eaw-border rounded outline-none w-full;
+}
+.input-field:focus {
+  @apply border-eaw-primary ring-1 ring-eaw-primary;
+}
+
+.select-field {
+  @apply px-3 py-2 text-sm border border-eaw-border rounded outline-none w-full bg-white;
+}
+.select-field:focus {
+  @apply border-eaw-primary ring-1 ring-eaw-primary;
+}
+
+.badge-success {
+  background-color: #dff0d8;
+  color: #3c763d;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-warning {
+  background-color: #fcf8e3;
+  color: #8a6d3b;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-danger {
+  background-color: #f2dede;
+  color: #a94442;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-info {
+  background-color: #d9edf7;
+  color: #31708f;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.badge-muted {
+  background-color: #f5f5f5;
+  color: #777;
+  padding: 0.125rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.eaw-table {
+  @apply w-full text-sm;
+}
+.eaw-table thead th {
+  @apply text-left text-xs font-semibold uppercase text-eaw-muted bg-gray-50 px-4 py-3 border-b border-eaw-border;
+}
+.eaw-table tbody td {
+  @apply px-4 py-3 border-b border-eaw-border-light;
+}
+.eaw-table tbody tr:hover {
+  @apply bg-gray-50;
+}
+
+.kpi-card {
+  @apply bg-white rounded shadow-eaw p-5 flex items-center gap-4;
+}

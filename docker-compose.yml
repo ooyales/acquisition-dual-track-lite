@@ -1,0 +1,29 @@
+services:
+  backend:
+    build: ./backend
+    container_name: acqdt-backend
+    ports:
+      - "5009:5000"
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_URL=sqlite:////app/data/acquisition_dual_track.db
+      - SECRET_KEY=dev-secret
+      - JWT_SECRET_KEY=jwt-dev-secret
+    volumes:
+      - acqdt-data:/app/data
+      - ./acquisition-rules-config.xlsx:/app/acquisition-rules-config.xlsx:ro
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: acqdt-frontend
+    ports:
+      - "6007:5173"
+    environment:
+      - VITE_API_URL=http://backend:5000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  acqdt-data:
