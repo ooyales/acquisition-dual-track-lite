@@ -28,6 +28,7 @@ class CLINExecutionRequest(db.Model):
     funding_status = db.Column(db.String(30))  # sufficient, insufficient, in_progress, complete
     funding_action_required = db.Column(db.Boolean, default=False)
     funding_action_amount = db.Column(db.Float)
+    funding_request_id = db.Column(db.Integer, db.ForeignKey('acquisition_requests.id'))  # linked funding action
 
     # PM Approval
     pm_approval = db.Column(db.String(20))  # pending, approved, rejected, returned
@@ -79,6 +80,7 @@ class CLINExecutionRequest(db.Model):
 
     # Relationships
     contract = db.relationship('AcquisitionRequest', foreign_keys=[contract_id])
+    funding_request = db.relationship('AcquisitionRequest', foreign_keys=[funding_request_id])
     requested_by = db.relationship('User', foreign_keys=[requested_by_id])
     pm_approved_by = db.relationship('User', foreign_keys=[pm_approved_by_id])
     cto_approved_by = db.relationship('User', foreign_keys=[cto_approved_by_id])
@@ -120,6 +122,7 @@ class CLINExecutionRequest(db.Model):
             'funding_status': self.funding_status,
             'funding_action_required': self.funding_action_required,
             'funding_action_amount': self.funding_action_amount,
+            'funding_request_id': self.funding_request_id,
             'pm_approval': self.pm_approval,
             'pm_approved_date': self.pm_approved_date.isoformat() if self.pm_approved_date else None,
             'pm_comments': self.pm_comments,

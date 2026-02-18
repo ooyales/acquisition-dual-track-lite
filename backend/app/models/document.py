@@ -66,6 +66,8 @@ class PackageDocument(db.Model):
     content = db.Column(db.Text)  # For AI-generated drafts
     ai_generated = db.Column(db.Boolean, default=False)
     notes = db.Column(db.Text)
+    uploaded_filename = db.Column(db.String(255))
+    uploaded_filepath = db.Column(db.String(500))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -81,6 +83,7 @@ class PackageDocument(db.Model):
             'was_required': self.was_required,
             'content': self.content,
             'notes': self.notes,
+            'uploaded_filename': self.uploaded_filename,
         }
         if self.template:
             d['template'] = {

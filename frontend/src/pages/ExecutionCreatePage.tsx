@@ -21,15 +21,14 @@ export default function ExecutionCreatePage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    requestsApi.list({ status: 'active' }).then(data => {
-      const reqs = Array.isArray(data) ? data : data.requests || [];
-      setRequests(reqs);
-      // If no active, load awarded too
-      if (reqs.length === 0) {
-        requestsApi.list({ status: 'awarded' }).then(d2 => {
-          setRequests(Array.isArray(d2) ? d2 : d2.requests || []);
-        });
-      }
+    // Load awarded and approved requests — those have active contracts to execute against
+    Promise.all([
+      requestsApi.list({ status: 'awarded', per_page: 100 }),
+      requestsApi.list({ status: 'approved', per_page: 100 }),
+    ]).then(([d1, d2]) => {
+      const r1 = Array.isArray(d1) ? d1 : d1.requests || [];
+      const r2 = Array.isArray(d2) ? d2 : d2.requests || [];
+      setRequests([...r1, ...r2]);
     });
   }, []);
 
@@ -60,12 +59,26 @@ export default function ExecutionCreatePage() {
     setError('');
     try {
       const payload = {
-        request_id: Number(selectedRequest),
+        contract_id: Number(selectedRequest),
         clin_id: Number(selectedClin),
         execution_type: execType,
+        title: description || `${execType === 'travel' ? 'Travel' : 'ODC'} Request`,
         description,
-        requested_amount: computeAmount(),
-        ...form,
+        estimated_cost: computeAmount(),
+        ...Object.fromEntries(
+          Object.entries(form).map(([k, v]) => {
+            // Map frontend form fields to backend field names
+            const prefix = execType === 'travel' ? 'travel_' : 'odc_';
+            if (['traveler_name', 'destination', 'departure_date', 'return_date', 'purpose', 'conference_event'].includes(k)) return [`travel_${k}`, v];
+            if (['airfare_estimate', 'lodging_estimate', 'per_diem_estimate', 'other_travel_costs'].includes(k)) {
+              const mapped: Record<string, string> = { airfare_estimate: 'travel_airfare', lodging_estimate: 'travel_lodging', per_diem_estimate: 'travel_per_diem', other_travel_costs: 'travel_other_costs' };
+              return [mapped[k], parseFloat(v) || 0];
+            }
+            if (['product_name', 'vendor', 'quote_reference'].includes(k)) return [`odc_${k}`, v];
+            if (['quantity', 'unit_price'].includes(k)) return [k, parseFloat(v) || 0];
+            return [k, v];
+          })
+        ),
       };
       const result = await executionApi.create(payload);
       navigate(`/execution/${result.id}`);

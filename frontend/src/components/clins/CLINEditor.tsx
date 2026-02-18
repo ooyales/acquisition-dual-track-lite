@@ -165,7 +165,7 @@ export default function CLINEditor({ requestId }: Props) {
             <label className="block text-xs text-gray-500 mb-1">PSC Code</label>
             <div className="relative">
               <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input className="input-field text-sm pl-7" value={form.psc_code || pscSearch}
+              <input className="input-field text-sm" style={{ paddingLeft: '1.75rem' }} value={form.psc_code || pscSearch}
                 onChange={e => { setPscSearch(e.target.value); set('psc_code', ''); }}
                 onFocus={() => pscSearch.length >= 2 && setShowPsc(true)}
                 placeholder="Search PSC..." />

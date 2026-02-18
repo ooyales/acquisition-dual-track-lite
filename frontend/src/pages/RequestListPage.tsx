@@ -84,9 +84,9 @@ export default function RequestListPage() {
                   <th>Title</th>
                   <th>Type</th>
                   <th>Tier</th>
-                  <th>Pipeline</th>
                   <th>Value</th>
                   <th>Status</th>
+                  <th>Action With</th>
                 </tr>
               </thead>
               <tbody>
@@ -96,9 +96,19 @@ export default function RequestListPage() {
                     <td className="font-medium">{req.title}</td>
                     <td className="text-sm">{ACQUISITION_TYPE_LABELS[req.acquisition_type || ''] || req.acquisition_type}</td>
                     <td><StatusBadge status={req.tier || ''} label={TIER_LABELS[req.tier || '']} /></td>
-                    <td className="text-sm">{PIPELINE_LABELS[req.pipeline || ''] || req.pipeline}</td>
                     <td className="text-sm">${(req.estimated_value || 0).toLocaleString()}</td>
                     <td><StatusBadge status={req.status} /></td>
+                    <td className="text-sm">
+                      {req.action_with ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          req.action_with.includes('Requestor') ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {req.action_with}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

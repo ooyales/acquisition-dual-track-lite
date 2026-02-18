@@ -40,6 +40,8 @@ export interface AcquisitionRequest {
   awarded_date: string | null;
   awarded_vendor: string | null;
   awarded_amount: number | null;
+  // Action tracking
+  action_with: string | null;
   // Timestamps
   created_at: string | null;
   updated_at: string | null;
@@ -79,6 +81,7 @@ export interface PackageDocument {
   was_required: boolean;
   content: string | null;
   notes: string | null;
+  uploaded_filename: string | null;
 }
 
 export interface DocumentTemplate {
@@ -115,6 +118,9 @@ export interface AdvisoryInput {
   blocks_gate: string | null;
   assigned_at: string | null;
   completed_at: string | null;
+  info_request_message: string | null;
+  info_response: string | null;
+  info_response_filename: string | null;
 }
 
 export interface Notification {

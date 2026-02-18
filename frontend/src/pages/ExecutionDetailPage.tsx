@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, FileText, DollarSign } from 'lucide-react';
+import { ArrowLeft, Check, FileText, DollarSign, AlertTriangle, ExternalLink, Send } from 'lucide-react';
 import { executionApi } from '../api/execution';
 import StatusBadge from '../components/common/StatusBadge';
 import { EXECUTION_TYPE_LABELS } from '../types';
@@ -9,10 +9,13 @@ import { useAuthStore } from '../store/authStore';
 interface ExecDetail {
   id: number;
   request_id: number;
+  contract_id: number;
   clin_id: number;
   execution_type: string;
+  title: string;
   description: string;
   requested_amount: number;
+  estimated_cost: number;
   status: string;
   product_name?: string;
   vendor?: string;
@@ -40,6 +43,13 @@ interface ExecDetail {
   clin_number?: string;
   request_title?: string;
   created_at: string;
+  // Funding fields
+  funding_status?: string;
+  funding_action_required?: boolean;
+  funding_action_amount?: number;
+  funding_request_id?: number;
+  estimated_cost?: number;
+  contract_id?: number;
 }
 
 export default function ExecutionDetailPage() {
@@ -49,6 +59,7 @@ export default function ExecutionDetailPage() {
   const [exec, setExec] = useState<ExecDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [invoiceForm, setInvoiceForm] = useState({ invoice_number: '', invoice_amount: '', invoice_date: '' });
+  const [fundingLoading, setFundingLoading] = useState(false);
 
   const execId = Number(id);
 
@@ -80,6 +91,28 @@ export default function ExecutionDetailPage() {
     loadData();
   };
 
+  const handleSubmit = async () => {
+    try {
+      await executionApi.submit(execId);
+      loadData();
+    } catch {
+      // handle error
+    }
+  };
+
+  const handleRequestFunding = async () => {
+    setFundingLoading(true);
+    try {
+      const result = await executionApi.requestFunding(execId);
+      loadData();
+      if (result.funding_request_id) {
+        navigate(`/requests/${result.funding_request_id}`);
+      }
+    } catch {
+      setFundingLoading(false);
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64 text-gray-500">Loading...</div>;
   if (!exec) return <div className="text-center py-12 text-gray-500">Execution request not found</div>;
 
@@ -104,15 +137,15 @@ export default function ExecutionDetailPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
           <div>
             <span className="text-gray-500">Request</span>
-            <p className="font-medium">{exec.request_title || `#${exec.request_id}`}</p>
+            <p className="font-medium">{exec.request_title || `#${exec.contract_id || exec.request_id}`}</p>
           </div>
           <div>
             <span className="text-gray-500">CLIN</span>
             <p className="font-medium">{exec.clin_number || `#${exec.clin_id}`}</p>
           </div>
           <div>
-            <span className="text-gray-500">Requested Amount</span>
-            <p className="font-medium">${exec.requested_amount.toLocaleString()}</p>
+            <span className="text-gray-500">Estimated Cost</span>
+            <p className="font-medium">${(exec.estimated_cost || exec.requested_amount || 0).toLocaleString()}</p>
           </div>
           <div>
             <span className="text-gray-500">Created</span>
@@ -180,8 +213,73 @@ export default function ExecutionDetailPage() {
           </div>
         </div>
 
+        {/* Funding Status */}
+        {exec.funding_status === 'sufficient' && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+            <Check size={16} className="text-green-600" />
+            <span className="text-sm text-green-800 font-medium">
+              CLIN {exec.clin_number} has sufficient funds for this execution.
+            </span>
+          </div>
+        )}
+
+        {exec.funding_action_required && !exec.funding_request_id && (
+          <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Insufficient CLIN Balance</p>
+                <p className="text-sm text-amber-700 mt-1">
+                  CLIN {exec.clin_number} does not have enough available funds to cover this
+                  {' '}{exec.execution_type === 'travel' ? 'travel' : 'ODC'} request.
+                  {exec.funding_action_amount != null && (
+                    <> Shortfall: <span className="font-semibold">${exec.funding_action_amount.toLocaleString()}</span></>
+                  )}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleRequestFunding}
+              disabled={fundingLoading}
+              className="btn-primary text-sm flex items-center gap-1.5"
+            >
+              <DollarSign size={14} />
+              {fundingLoading ? 'Creating funding request...' : 'Request Additional Funding'}
+            </button>
+            <p className="text-xs text-amber-600">
+              This will create a pre-filled acquisition request for incremental funding that goes through the approval pipeline (KO, Budget/FM).
+            </p>
+          </div>
+        )}
+
+        {exec.funding_request_id && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <DollarSign size={16} className="text-blue-600" />
+              <span className="text-sm text-blue-800">
+                <span className="font-medium">Funding action in progress</span>
+                {exec.funding_action_amount != null && (
+                  <> — ${exec.funding_action_amount.toLocaleString()} requested</>
+                )}
+              </span>
+            </div>
+            <button
+              onClick={() => navigate(`/requests/${exec.funding_request_id}`)}
+              className="text-sm text-blue-700 font-medium hover:underline flex items-center gap-1"
+            >
+              View Funding Request <ExternalLink size={12} />
+            </button>
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex gap-2 pt-4 border-t border-gray-200">
+          {exec.status === 'draft' && (
+            <button onClick={handleSubmit} className="btn-primary text-sm flex items-center gap-1">
+              <Send size={14} /> Submit for Approval
+            </button>
+          )}
+
           {exec.status === 'submitted' && ['admin', 'branch_chief', 'cto'].includes(user?.role || '') && (
             <>
               <button onClick={() => handleApprove('approve')} className="btn-success text-sm flex items-center gap-1">
@@ -193,7 +291,7 @@ export default function ExecutionDetailPage() {
             </>
           )}
 
-          {exec.status === 'approved' && (
+          {(exec.status === 'approved' || exec.status === 'authorized') && (
             <div className="flex items-end gap-3 flex-1">
               <div className="flex-1">
                 <label className="block text-xs text-gray-500 mb-1">Invoice #</label>

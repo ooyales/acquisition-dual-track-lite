@@ -6,6 +6,29 @@ from app.extensions import db
 psc_bp = Blueprint('psc', __name__)
 
 
+@psc_bp.route('/search', methods=['GET'])
+@jwt_required()
+def search_psc():
+    """Quick search endpoint for PSC typeahead."""
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify({'codes': [], 'count': 0})
+
+    results = PSCCode.query.filter(
+        PSCCode.status == 'active',
+        db.or_(
+            PSCCode.code.ilike(f'%{q}%'),
+            PSCCode.title.ilike(f'%{q}%'),
+            PSCCode.group_name.ilike(f'%{q}%'),
+        )
+    ).order_by(PSCCode.code).limit(20).all()
+
+    return jsonify({
+        'codes': [p.to_dict() for p in results],
+        'count': len(results),
+    })
+
+
 @psc_bp.route('', methods=['GET'])
 @jwt_required()
 def list_psc():

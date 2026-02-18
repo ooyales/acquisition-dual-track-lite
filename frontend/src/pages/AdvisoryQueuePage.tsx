@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Send } from 'lucide-react';
+import { Shield, Send, MessageSquare, Clock, Download } from 'lucide-react';
 import { advisoryApi } from '../api/advisory';
 import StatusBadge from '../components/common/StatusBadge';
 import { ADVISORY_LABELS } from '../types';
@@ -13,6 +13,9 @@ interface AdvisoryData {
   assigned_at: string | null;
   findings: string | null;
   recommendation: string | null;
+  info_request_message: string | null;
+  info_response: string | null;
+  info_response_filename: string | null;
 }
 
 interface RequestData {
@@ -24,9 +27,16 @@ interface RequestData {
   derived_tier: string | null;
 }
 
+interface SharedAttachment {
+  advisory_id: number;
+  team: string;
+  filename: string;
+}
+
 interface QueueItem {
   advisory: AdvisoryData;
   request: RequestData | null;
+  shared_attachments: SharedAttachment[];
 }
 
 export default function AdvisoryQueuePage() {
@@ -37,6 +47,7 @@ export default function AdvisoryQueuePage() {
   const [recommendation, setRecommendation] = useState('proceed');
   const [impactsStrategy, setImpactsStrategy] = useState(false);
   const [blocksGate, setBlocksGate] = useState(false);
+  const [infoRequestMessage, setInfoRequestMessage] = useState('');
   const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
@@ -56,22 +67,45 @@ export default function AdvisoryQueuePage() {
 
   useEffect(() => { loadQueue(); }, []);
 
-  const handleSubmit = async (id: number) => {
-    const status = recommendation === 'reject' || recommendation === 'hold'
-      ? 'complete_issues_found'
-      : 'complete_no_issues';
-    await advisoryApi.submit(id, {
-      findings,
-      recommendation,
-      impacts_strategy: impactsStrategy,
-      status,
-    });
+  const resetForm = () => {
     setActiveId(null);
     setFindings('');
     setRecommendation('proceed');
     setImpactsStrategy(false);
     setBlocksGate(false);
+    setInfoRequestMessage('');
+  };
+
+  const handleSubmit = async (id: number) => {
+    if (recommendation === 'request_info') {
+      await advisoryApi.submit(id, {
+        findings,
+        recommendation: 'request_info',
+        info_request_message: infoRequestMessage,
+        status: 'info_requested',
+      });
+    } else {
+      const status = recommendation === 'reject' || recommendation === 'hold'
+        ? 'complete_issues_found'
+        : 'complete_no_issues';
+      await advisoryApi.submit(id, {
+        findings,
+        recommendation,
+        impacts_strategy: impactsStrategy,
+        status,
+      });
+    }
+    resetForm();
     loadQueue();
+  };
+
+  const openForm = (item: QueueItem) => {
+    setActiveId(item.advisory.id);
+    // If this advisory has a previous info response, pre-populate context
+    if (item.advisory.info_response) {
+      setFindings('');
+      setRecommendation('proceed');
+    }
   };
 
   return (
@@ -111,11 +145,59 @@ export default function AdvisoryQueuePage() {
                   </p>
                 </div>
                 {activeId !== item.advisory.id && (
-                  <button onClick={() => setActiveId(item.advisory.id)} className="btn-primary text-sm">
+                  <button onClick={() => openForm(item)} className="btn-primary text-sm">
                     Provide Input
                   </button>
                 )}
               </div>
+
+              {/* Shared attachments from other advisory teams */}
+              {item.shared_attachments && item.shared_attachments.length > 0 && (
+                <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-gray-600 mb-1.5">Shared Attachments on This Request</p>
+                  {item.shared_attachments.map(att => (
+                    <button
+                      key={att.advisory_id}
+                      onClick={() => advisoryApi.downloadAttachment(att.advisory_id)}
+                      className="flex items-center gap-2 text-sm text-eaw-primary hover:underline mb-1"
+                    >
+                      <Download size={14} />
+                      <span>{att.filename}</span>
+                      <span className="text-xs text-gray-400">(from {ADVISORY_LABELS[att.team] || att.team})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Show info request/response context */}
+              {item.advisory.status === 'info_requested' && (
+                <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-amber-700 text-sm font-medium mb-1">
+                    <Clock size={14} /> Waiting for requestor to respond
+                  </div>
+                  <p className="text-sm text-amber-800">You asked: "{item.advisory.info_request_message}"</p>
+                </div>
+              )}
+
+              {item.advisory.info_response && item.advisory.status !== 'info_requested' && (
+                <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <div className="flex items-center gap-2 text-blue-700 text-sm font-medium mb-1">
+                    <MessageSquare size={14} /> Requestor responded
+                  </div>
+                  {item.advisory.info_request_message && (
+                    <p className="text-xs text-blue-600 mb-1">You asked: "{item.advisory.info_request_message}"</p>
+                  )}
+                  <p className="text-sm text-blue-800">{item.advisory.info_response}</p>
+                  {item.advisory.info_response_filename && (
+                    <button
+                      onClick={() => advisoryApi.downloadAttachment(item.advisory.id)}
+                      className="mt-2 text-sm text-blue-700 hover:underline flex items-center gap-1"
+                    >
+                      <Download size={14} /> {item.advisory.info_response_filename}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {activeId === item.advisory.id && (
                 <div className="mt-3 border-t border-gray-200 pt-3 space-y-3">
@@ -132,26 +214,54 @@ export default function AdvisoryQueuePage() {
                         onChange={e => setRecommendation(e.target.value)}>
                         <option value="proceed">Proceed</option>
                         <option value="proceed_with_conditions">Proceed with Conditions</option>
+                        <option value="request_info">Request Information</option>
                         <option value="hold">Hold</option>
                         <option value="reject">Reject</option>
                       </select>
                     </div>
-                    <label className="flex items-center gap-2 text-sm pt-6">
-                      <input type="checkbox" checked={impactsStrategy}
-                        onChange={e => setImpactsStrategy(e.target.checked)} />
-                      Impacts acquisition strategy
-                    </label>
-                    <label className="flex items-center gap-2 text-sm pt-6">
-                      <input type="checkbox" checked={blocksGate}
-                        onChange={e => setBlocksGate(e.target.checked)} />
-                      Blocks gate progression
-                    </label>
+                    {recommendation !== 'request_info' && (
+                      <>
+                        <label className="flex items-center gap-2 text-sm pt-6">
+                          <input type="checkbox" checked={impactsStrategy}
+                            onChange={e => setImpactsStrategy(e.target.checked)} />
+                          Impacts acquisition strategy
+                        </label>
+                        <label className="flex items-center gap-2 text-sm pt-6">
+                          <input type="checkbox" checked={blocksGate}
+                            onChange={e => setBlocksGate(e.target.checked)} />
+                          Blocks gate progression
+                        </label>
+                      </>
+                    )}
                   </div>
+
+                  {recommendation === 'request_info' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        What information do you need from the requestor?
+                      </label>
+                      <textarea className="input-field" rows={2} value={infoRequestMessage}
+                        onChange={e => setInfoRequestMessage(e.target.value)}
+                        placeholder="e.g., Please provide the vendor quote or Bill of Materials..." />
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
-                    <button onClick={() => handleSubmit(item.advisory.id)} className="btn-primary text-sm flex items-center gap-1">
-                      <Send size={14} /> Submit Findings
+                    <button
+                      onClick={() => handleSubmit(item.advisory.id)}
+                      disabled={recommendation === 'request_info' && !infoRequestMessage.trim()}
+                      className={`text-sm flex items-center gap-1 ${
+                        recommendation === 'request_info' ? 'btn-secondary border-amber-400 text-amber-700 hover:bg-amber-50' : 'btn-primary'
+                      }`}
+                      style={recommendation === 'request_info' && !infoRequestMessage.trim() ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                    >
+                      {recommendation === 'request_info' ? (
+                        <><MessageSquare size={14} /> Send Information Request</>
+                      ) : (
+                        <><Send size={14} /> Submit Findings</>
+                      )}
                     </button>
-                    <button onClick={() => setActiveId(null)} className="btn-secondary text-sm">Cancel</button>
+                    <button onClick={resetForm} className="btn-secondary text-sm">Cancel</button>
                   </div>
                 </div>
               )}

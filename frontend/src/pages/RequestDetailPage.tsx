@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, ClipboardCheck, Shield, Package, ArrowLeft, Send, Trash2 } from 'lucide-react';
+import { FileText, ClipboardCheck, Shield, Package, ArrowLeft, Send, Trash2, MessageSquare } from 'lucide-react';
 import { requestsApi } from '../api/requests';
 import { documentsApi } from '../api/documents';
 import { approvalsApi } from '../api/approvals';
@@ -10,7 +10,7 @@ import StatusBadge from '../components/common/StatusBadge';
 import DocumentChecklist from '../components/documents/DocumentChecklist';
 import ApprovalPipeline from '../components/approvals/ApprovalPipeline';
 import AdvisoryPanel from '../components/advisory/AdvisoryPanel';
-import { ACQUISITION_TYPE_LABELS, TIER_LABELS, PIPELINE_LABELS } from '../types';
+import { ACQUISITION_TYPE_LABELS, TIER_LABELS, PIPELINE_LABELS, ADVISORY_LABELS } from '../types';
 import type { AcquisitionRequest, PackageDocument, ApprovalStep, AdvisoryInput, AcquisitionCLIN } from '../types';
 import { useAuthStore } from '../store/authStore';
 
@@ -108,6 +108,25 @@ export default function RequestDetailPage() {
         )}
       </div>
 
+      {/* Info Request Alert */}
+      {advisories.filter(a => a.status === 'info_requested').map(a => (
+        <div key={a.id} className="bg-amber-50 border border-amber-300 rounded-lg p-4 flex items-start gap-3">
+          <MessageSquare size={20} className="text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-amber-800">
+              {(ADVISORY_LABELS[a.team] || a.team)} team is requesting additional information
+            </p>
+            <p className="text-sm text-amber-700 mt-1">{a.info_request_message}</p>
+            <button
+              onClick={() => setTab('advisory')}
+              className="mt-2 text-sm text-amber-800 font-medium underline hover:text-amber-900"
+            >
+              Go to Advisory tab to respond
+            </button>
+          </div>
+        </div>
+      ))}
+
       {/* Tabs */}
       <div className="flex gap-1 border-b border-gray-200">
         {tabs.map(t => (
@@ -193,7 +212,7 @@ export default function RequestDetailPage() {
         )}
 
         {tab === 'advisory' && (
-          <AdvisoryPanel advisories={advisories} />
+          <AdvisoryPanel advisories={advisories} onRefresh={loadData} />
         )}
 
         {tab === 'clins' && (

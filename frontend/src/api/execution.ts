@@ -17,4 +17,6 @@ export const executionApi = {
     client.post(`/execution/${id}/invoice`, data).then(r => r.data),
   validate: (id: number) =>
     client.post(`/execution/${id}/validate`).then(r => r.data),
+  requestFunding: (id: number) =>
+    client.post(`/execution/${id}/request-funding`).then(r => r.data),
 };

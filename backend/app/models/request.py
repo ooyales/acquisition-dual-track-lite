@@ -90,6 +90,65 @@ class AcquisitionRequest(db.Model):
     advisory_inputs = db.relationship('AdvisoryInput', backref='request', lazy='dynamic', cascade='all, delete-orphan')
     activity_logs = db.relationship('ActivityLog', backref='request', lazy='dynamic', cascade='all, delete-orphan')
 
+    ROLE_DISPLAY = {
+        'branch_chief': 'Branch Chief',
+        'cto': 'CTO',
+        'cio': 'CIO',
+        'ko': 'Contracting Officer',
+        'legal': 'Legal',
+        'budget': 'Budget/FM',
+        'senior_leader': 'Senior Leadership',
+        'scrm': 'SCRM',
+        'sb': 'Small Business',
+    }
+
+    @property
+    def action_with(self):
+        """Determine who currently holds the action for this request."""
+        if self.status == 'draft':
+            return 'Requestor'
+        if self.status in ('approved', 'awarded', 'closed', 'cancelled'):
+            return None
+        if self.status == 'returned':
+            return 'Requestor'
+
+        # Check for active approval step
+        from app.models.approval import ApprovalStep
+        active_step = ApprovalStep.query.filter_by(
+            request_id=self.id, status='active'
+        ).first()
+        if active_step:
+            return self.ROLE_DISPLAY.get(active_step.approver_role, active_step.approver_role.replace('_', ' ').title())
+
+        # Check for advisory info requests waiting on requestor
+        from app.models.advisory import AdvisoryInput
+        info_req = AdvisoryInput.query.filter_by(
+            request_id=self.id, status='info_requested'
+        ).first()
+        if info_req:
+            return 'Requestor (info requested)'
+
+        # Check if any advisories are pending
+        pending_adv = AdvisoryInput.query.filter(
+            AdvisoryInput.request_id == self.id,
+            AdvisoryInput.status.in_(['requested', 'in_review'])
+        ).first()
+        if pending_adv:
+            return f'Advisory ({pending_adv.team.upper()})'
+
+        # Fallback based on status name
+        status_map = {
+            'submitted': 'Branch Chief',
+            'iss_review': 'Branch Chief',
+            'asr_review': 'CTO',
+            'finance_review': 'Budget/FM',
+            'ko_review': 'Contracting Officer',
+            'legal_review': 'Legal',
+            'cio_approval': 'CIO',
+            'senior_review': 'Senior Leadership',
+        }
+        return status_map.get(self.status)
+
     def to_dict(self, include_relations=False):
         d = {
             'id': self.id,
@@ -134,6 +193,7 @@ class AcquisitionRequest(db.Model):
             # Meta
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'action_with': self.action_with,
         }
         if self.requestor:
             d['requestor'] = {

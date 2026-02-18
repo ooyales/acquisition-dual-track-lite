@@ -87,7 +87,7 @@ export default function ApprovalQueuePage() {
         <div className="space-y-3">
           {queue.map(item => (
             <div key={item.id} className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-start justify-between">
+              <div className="flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <button onClick={() => navigate(`/requests/${item.request_id}`)}
@@ -101,28 +101,37 @@ export default function ApprovalQueuePage() {
                     Gate: {item.gate_name} · Step {item.step_number} · SLA: {item.sla_days} days
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  {actionId === item.id ? (
-                    <div className="flex items-center gap-2">
-                      <input className="input-field text-sm w-48" placeholder="Comments..."
-                        value={comments} onChange={e => setComments(e.target.value)} />
-                      <button onClick={() => handleAction(item.id, 'approve')}
-                        className="btn-success text-sm flex items-center gap-1">
-                        <Check size={14} /> Approve
-                      </button>
-                      <button onClick={() => handleAction(item.id, 'reject')}
-                        className="btn-danger text-sm flex items-center gap-1">
-                        <X size={14} /> Reject
-                      </button>
-                      <button onClick={() => setActionId(null)} className="text-xs text-gray-500">Cancel</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => setActionId(item.id)} className="btn-primary text-sm">
-                      Review
-                    </button>
-                  )}
-                </div>
+                {actionId !== item.id && (
+                  <button onClick={() => setActionId(item.id)} className="btn-primary text-sm">
+                    Review
+                  </button>
+                )}
               </div>
+
+              {actionId === item.id && (
+                <div className="mt-3 border-t border-gray-100 pt-3 space-y-3">
+                  <textarea
+                    className="input-field text-sm w-full"
+                    rows={3}
+                    placeholder="Comments (optional) — e.g., concur with findings, conditions, rationale for return..."
+                    value={comments}
+                    onChange={e => setComments(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => handleAction(item.id, 'approve')}
+                      className="btn-success text-sm flex items-center gap-1">
+                      <Check size={14} /> Approve
+                    </button>
+                    <button onClick={() => handleAction(item.id, 'reject')}
+                      className="btn-danger text-sm flex items-center gap-1">
+                      <X size={14} /> Reject
+                    </button>
+                    <button onClick={() => { setActionId(null); setComments(''); }} className="text-sm text-gray-500 hover:text-gray-700 ml-2">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

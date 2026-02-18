@@ -20,6 +20,10 @@ function getIcon(type: string) {
       return <MessageSquare size={16} className="text-eaw-info" />;
     case 'advisory_completed':
       return <FileCheck size={16} className="text-eaw-success" />;
+    case 'info_requested':
+      return <MessageSquare size={16} className="text-eaw-warning" />;
+    case 'info_provided':
+      return <FileCheck size={16} className="text-eaw-info" />;
     default:
       return <Bell size={16} className="text-gray-400" />;
   }

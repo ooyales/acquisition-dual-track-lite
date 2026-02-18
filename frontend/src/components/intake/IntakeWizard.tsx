@@ -163,7 +163,7 @@ export default function IntakeWizard() {
     }
   };
 
-  // Auto-set vendor_known for paths where vendor is already determined
+  // Auto-set vendor_known and buy_category for paths where they're already determined
   useEffect(() => {
     const sub = answers.need_sub_type;
     if (answers.need_type === 'continue_extend') {
@@ -171,6 +171,12 @@ export default function IntakeWizard() {
         set('vendor_known', 'yes_sole');
       } else if (sub === 'expiring_compete' || sub === 'expired_gap') {
         set('vendor_known', 'no');
+      }
+      // Auto-set buy_category for CLIN execution paths
+      if (sub === 'travel_clin') {
+        set('buy_category', 'service');
+      } else if (sub === 'odc_clin' || sub === 'odc_clin_insufficient') {
+        set('buy_category', 'product');
       }
     } else if (answers.need_type === 'change_existing') {
       set('vendor_known', 'yes_sole');
@@ -350,61 +356,82 @@ export default function IntakeWizard() {
         )}
 
         {/* Step 1: Category & Value */}
-        {step === 1 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Category & Estimated Value</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">What are you buying?</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {buyCategories.map(opt => (
-                  <button key={opt.value} onClick={() => set('buy_category', opt.value)}
-                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
-                      answers.buy_category === opt.value
-                        ? 'border-eaw-primary bg-eaw-primary/5'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}>
-                    <div className="font-medium text-sm">{opt.label}</div>
-                    {opt.description && <div className="text-xs text-gray-500 mt-1">{opt.description}</div>}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {answers.buy_category === 'mixed' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Predominant element?</label>
-                <div className="flex gap-3">
-                  {['product', 'service'].map(v => (
-                    <button key={v} onClick={() => set('predominant_element', v)}
-                      className={`px-4 py-2 rounded border text-sm capitalize ${
-                        answers.predominant_element === v
-                          ? 'border-eaw-primary bg-eaw-primary/5 font-medium'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}>{v}</button>
-                  ))}
+        {step === 1 && (() => {
+          const isClinExec = ['odc_clin', 'travel_clin', 'odc_clin_insufficient'].includes(answers.need_sub_type);
+          const clinExecLabel = answers.need_sub_type === 'travel_clin' ? 'Travel' : 'ODC (Other Direct Cost)';
+          return (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold">
+                {isClinExec ? 'Estimated Value' : 'Category & Estimated Value'}
+              </h2>
+
+              {isClinExec ? (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+                  Category auto-set to <span className="font-medium">{clinExecLabel}</span> based on your selection.
+                  {answers.need_sub_type === 'odc_clin_insufficient' && (
+                    <span> This request will include a funding modification.</span>
+                  )}
                 </div>
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Estimated Total Value ($)</label>
-              <div className="flex items-center">
-                <span className="bg-gray-100 border border-r-0 border-gray-300 rounded-l px-3 py-2 text-gray-500 text-sm">$</span>
-                <input type="number" className="input-field rounded-l-none flex-1"
-                  value={answers.estimated_value}
-                  onChange={e => set('estimated_value', e.target.value)}
-                  placeholder="0.00" min="0" step="1000" />
-              </div>
-              {derived && displayTier && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Threshold tier: <span className="font-medium">{TIER_LABELS[displayTier] || displayTier}</span>
-                  {displayTier === 'micro' && ' — Simplified procedures apply'}
-                  {displayTier === 'sat' && ' — Below Simplified Acquisition Threshold'}
-                  {displayTier === 'above_sat' && ' — Full competition required'}
-                  {displayTier === 'major' && ' — Senior review required'}
-                </p>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">What are you buying?</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {buyCategories.map(opt => (
+                        <button key={opt.value} onClick={() => set('buy_category', opt.value)}
+                          className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                            answers.buy_category === opt.value
+                              ? 'border-eaw-primary bg-eaw-primary/5'
+                              : 'border-gray-200 hover:border-gray-300'
+                          }`}>
+                          <div className="font-medium text-sm">{opt.label}</div>
+                          {opt.description && <div className="text-xs text-gray-500 mt-1">{opt.description}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {answers.buy_category === 'mixed' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Predominant element?</label>
+                      <div className="flex gap-3">
+                        {['product', 'service'].map(v => (
+                          <button key={v} onClick={() => set('predominant_element', v)}
+                            className={`px-4 py-2 rounded border text-sm capitalize ${
+                              answers.predominant_element === v
+                                ? 'border-eaw-primary bg-eaw-primary/5 font-medium'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}>{v}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {isClinExec ? 'Estimated Execution Amount ($)' : 'Estimated Total Value ($)'}
+                </label>
+                <div className="flex items-center">
+                  <span className="bg-gray-100 border border-r-0 border-gray-300 rounded-l px-3 py-2 text-gray-500 text-sm">$</span>
+                  <input type="number" className="input-field rounded-l-none flex-1"
+                    value={answers.estimated_value}
+                    onChange={e => set('estimated_value', e.target.value)}
+                    placeholder="0.00" min="0" step="1000" />
+                </div>
+                {derived && displayTier && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Threshold tier: <span className="font-medium">{TIER_LABELS[displayTier] || displayTier}</span>
+                    {displayTier === 'micro' && ' — Simplified procedures apply'}
+                    {displayTier === 'sat' && ' — Below Simplified Acquisition Threshold'}
+                    {displayTier === 'above_sat' && ' — Full competition required'}
+                    {displayTier === 'major' && ' — Senior review required'}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Step 2: Competition */}
         {step === 2 && (

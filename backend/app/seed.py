@@ -304,6 +304,10 @@ def _seed_loas(users):
          2000000, 300000, 500000, 700000, 'procurement', '2028-09-30'),
         ('FY26 Working Capital IT Shared Services', '21-3456', 'WC-IT', '4000', 'CC-400', '25.3', 'PE-05', '2026',
          1500000, 150000, 300000, 600000, 'working_capital', '2026-09-30'),
+        ('FY26 Cyber O&M', '21-1236', 'OM-CYBER', '3611', 'CC-115', '25.3', 'PE-06', '2026',
+         2500000, 350000, 500000, 900000, 'om', '2026-09-30'),
+        ('FY26 Cyber PDW', '21-1237', 'PDW-CYBER', '3612', 'CC-116', '25.3', 'PE-07', '2026',
+         1200000, 100000, 200000, 350000, 'procurement', '2028-09-30'),
     ]
     loas = {}
     for i, (name, approp, fund, bac, cc, oc, pe, fy, total, proj, comm, oblig, ftype, exp) in enumerate(loa_data):

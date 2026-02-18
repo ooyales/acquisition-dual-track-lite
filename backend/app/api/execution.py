@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 from app.extensions import db
 from app.models.execution import CLINExecutionRequest
+from app.models.request import AcquisitionRequest
 from app.models.clin import AcquisitionCLIN
 from app.services.funding import check_clin_balance
 
@@ -279,3 +280,88 @@ def validate_execution(exec_id):
 
     db.session.commit()
     return jsonify(exe.to_dict())
+
+
+@execution_bp.route('/<int:exec_id>/request-funding', methods=['POST'])
+@jwt_required()
+def request_funding(exec_id):
+    """Auto-create an acquisition request for incremental funding when CLIN balance is insufficient."""
+    user_id = get_jwt_identity()
+    exe = CLINExecutionRequest.query.get_or_404(exec_id)
+
+    if not exe.funding_action_required:
+        return jsonify({'error': 'Funding action not required for this execution'}), 400
+
+    if exe.funding_request_id:
+        return jsonify({
+            'error': 'Funding request already created',
+            'funding_request_id': exe.funding_request_id,
+        }), 400
+
+    # Build context from the execution request and its parent contract
+    clin = AcquisitionCLIN.query.get(exe.clin_id) if exe.clin_id else None
+    contract = AcquisitionRequest.query.get(exe.contract_id) if exe.contract_id else None
+
+    shortfall = exe.funding_action_amount or exe.estimated_cost or 0
+    exec_label = 'Travel' if exe.execution_type == 'travel' else 'ODC'
+
+    # Generate request number
+    year = datetime.utcnow().strftime('%Y')
+    last = AcquisitionRequest.query.filter(
+        AcquisitionRequest.request_number.like(f'ACQ-{year}-%')
+    ).order_by(AcquisitionRequest.id.desc()).first()
+    seq = 1
+    if last:
+        try:
+            seq = int(last.request_number.split('-')[-1]) + 1
+        except (ValueError, IndexError):
+            pass
+    req_number = f'ACQ-{year}-{seq:04d}'
+
+    # Create the funding acquisition request pre-populated
+    funding_req = AcquisitionRequest(
+        request_number=req_number,
+        title=f'Incremental Funding — {exec_label} CLIN {clin.clin_number if clin else ""}',
+        description=(
+            f'Incremental funding action for {exec_label} execution #{exe.request_number}. '
+            f'CLIN {clin.clin_number if clin else "N/A"} has insufficient balance. '
+            f'Shortfall: ${shortfall:,.2f}. '
+            f'Original execution: {exe.title or exe.description or ""}'
+        ),
+        estimated_value=shortfall,
+        fiscal_year=year,
+        status='draft',
+        requestor_id=int(user_id),
+        # Pre-fill intake answers for the funding path
+        intake_q1_need_type='continue_extend',
+        intake_q2_situation='odc_clin_insufficient',
+        intake_q3_specific_vendor='yes_sole',
+        intake_q_buy_category='product' if exe.execution_type == 'odc' else 'service',
+        # Carry forward existing contract info
+        existing_contract_number=contract.existing_contract_number if contract else None,
+        existing_contract_vendor=contract.existing_contract_vendor if contract else None,
+        existing_contract_end_date=contract.existing_contract_end_date if contract else None,
+        # Derived classification
+        derived_acquisition_type='clin_execution_funding',
+        derived_tier='sat' if shortfall < 250000 else 'above_sat',
+        derived_pipeline='clin_exec_funding',
+        derived_contract_character='product' if exe.execution_type == 'odc' else 'service',
+        intake_completed=True,
+        intake_completed_date=datetime.utcnow(),
+    )
+
+    db.session.add(funding_req)
+    db.session.flush()  # Get the ID
+
+    # Link back
+    exe.funding_request_id = funding_req.id
+    exe.funding_status = 'in_progress'
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'funding_request_id': funding_req.id,
+        'funding_request_number': funding_req.request_number,
+        'execution': exe.to_dict(),
+    }), 201
