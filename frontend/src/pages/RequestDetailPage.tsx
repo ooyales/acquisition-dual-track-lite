@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileText, ClipboardCheck, Shield, Package, ArrowLeft, Send, Trash2, MessageSquare } from 'lucide-react';
+import { FileText, ClipboardCheck, Shield, Package, ArrowLeft, Send, Trash2, MessageSquare, Map } from 'lucide-react';
 import { requestsApi } from '../api/requests';
 import { documentsApi } from '../api/documents';
 import { approvalsApi } from '../api/approvals';
@@ -98,6 +98,9 @@ export default function RequestDetailPage() {
             <Send size={16} /> Submit
           </button>
         )}
+        <button onClick={() => navigate(`/process-guide?requestId=${reqId}`)} className="btn-secondary flex items-center gap-2">
+          <Map size={16} /> Process Guide
+        </button>
         <button onClick={() => navigate(`/requests/${reqId}/clins`)} className="btn-secondary flex items-center gap-2">
           <Package size={16} /> Manage CLINs
         </button>

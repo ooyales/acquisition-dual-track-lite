@@ -77,9 +77,10 @@ def submit_request(request_id, template_key=None):
         db.session.delete(step)
     db.session.flush()
 
-    # Create steps from template, evaluating conditional steps
+    # Create steps from template, evaluating conditional steps (skip disabled gates)
     template_steps = ApprovalTemplateStep.query.filter_by(
-        template_id=template.id
+        template_id=template.id,
+        is_enabled=True,
     ).order_by(ApprovalTemplateStep.step_number).all()
 
     active_step_number = 0

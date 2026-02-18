@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Settings, Save } from 'lucide-react';
+import { Settings, Save, Pencil, X, Plus, ChevronUp, ChevronDown, Trash2, ToggleLeft, ToggleRight, AlertTriangle } from 'lucide-react';
 import { adminApi } from '../api/admin';
 
 type Tab = 'thresholds' | 'templates' | 'rules' | 'users';
@@ -11,10 +11,27 @@ interface Threshold {
   far_reference: string;
 }
 
+interface TemplateStep {
+  id?: number;
+  step_number: number;
+  gate_name: string;
+  approver_role: string;
+  sla_days: number;
+  is_enabled: boolean;
+}
+
 interface Template {
   id: number;
+  template_key: string;
+  name: string;
   pipeline_type: string;
-  steps: Array<{ step_number: number; gate_name: string; approver_role: string; sla_days: number }>;
+  steps: TemplateStep[];
+}
+
+interface GateCatalogItem {
+  gate_name: string;
+  approver_role: string;
+  default_sla: number;
 }
 
 interface Rule {
@@ -32,6 +49,20 @@ interface UserItem {
   is_active: boolean;
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  branch_chief: 'Branch Chief',
+  budget: 'Budget Officer',
+  ko: 'Contracting Officer',
+  legal: 'Legal Counsel',
+  cio: 'CIO',
+  cto: 'CTO',
+  branch_chief_pm: 'Program Manager',
+};
+
+function roleLabel(role: string) {
+  return ROLE_LABELS[role] || role.replace(/_/g, ' ');
+}
+
 export default function AdminConfigPage() {
   const [tab, setTab] = useState<Tab>('thresholds');
   const [thresholds, setThresholds] = useState<Threshold[]>([]);
@@ -41,6 +72,13 @@ export default function AdminConfigPage() {
   const [loading, setLoading] = useState(true);
   const [editingThreshold, setEditingThreshold] = useState<number | null>(null);
   const [thresholdValue, setThresholdValue] = useState('');
+
+  // Template editing state
+  const [editingTemplate, setEditingTemplate] = useState<number | null>(null);
+  const [editSteps, setEditSteps] = useState<TemplateStep[]>([]);
+  const [gateCatalog, setGateCatalog] = useState<GateCatalogItem[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [showAddGate, setShowAddGate] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -67,11 +105,99 @@ export default function AdminConfigPage() {
     }
   }, [tab]);
 
+  // Load gate catalog once when entering edit mode
+  useEffect(() => {
+    if (editingTemplate && gateCatalog.length === 0) {
+      adminApi.getGateCatalog().then(data => {
+        setGateCatalog(data.catalog || []);
+      }).catch(() => {});
+    }
+  }, [editingTemplate, gateCatalog.length]);
+
   const handleSaveThreshold = async (id: number) => {
     await adminApi.updateThreshold(id, { dollar_limit: parseFloat(thresholdValue) });
     setEditingThreshold(null);
     adminApi.getThresholds().then(data => setThresholds(Array.isArray(data) ? data : data.thresholds || []));
   };
+
+  // --- Template editing handlers ---
+
+  const startEditTemplate = (t: Template) => {
+    setEditingTemplate(t.id);
+    setEditSteps(
+      [...t.steps]
+        .sort((a, b) => a.step_number - b.step_number)
+        .map(s => ({ ...s, is_enabled: s.is_enabled !== false }))
+    );
+    setShowAddGate(false);
+  };
+
+  const cancelEditTemplate = () => {
+    setEditingTemplate(null);
+    setEditSteps([]);
+    setShowAddGate(false);
+  };
+
+  const saveTemplateSteps = async (templateId: number) => {
+    setSaving(true);
+    try {
+      await adminApi.updateTemplateSteps(templateId, editSteps);
+      // Refresh templates
+      const data = await adminApi.getTemplates();
+      setTemplates(Array.isArray(data) ? data : data.templates || []);
+      setEditingTemplate(null);
+      setEditSteps([]);
+    } catch {
+      // keep editing
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleStepEnabled = (index: number) => {
+    setEditSteps(prev => prev.map((s, i) =>
+      i === index ? { ...s, is_enabled: !s.is_enabled } : s
+    ));
+  };
+
+  const updateStepSla = (index: number, sla: number) => {
+    setEditSteps(prev => prev.map((s, i) =>
+      i === index ? { ...s, sla_days: sla } : s
+    ));
+  };
+
+  const moveStep = (index: number, direction: -1 | 1) => {
+    const newIdx = index + direction;
+    if (newIdx < 0 || newIdx >= editSteps.length) return;
+    setEditSteps(prev => {
+      const copy = [...prev];
+      [copy[index], copy[newIdx]] = [copy[newIdx], copy[index]];
+      return copy;
+    });
+  };
+
+  const removeStep = (index: number) => {
+    setEditSteps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addGateFromCatalog = (gate: GateCatalogItem) => {
+    setEditSteps(prev => [
+      ...prev,
+      {
+        step_number: prev.length + 1,
+        gate_name: gate.gate_name,
+        approver_role: gate.approver_role,
+        sla_days: gate.default_sla,
+        is_enabled: true,
+      },
+    ]);
+    setShowAddGate(false);
+  };
+
+  // Gates available to add (not already in the template)
+  const availableGates = gateCatalog.filter(
+    g => !editSteps.some(s => s.gate_name === g.gate_name)
+  );
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'thresholds', label: 'FAR Thresholds' },
@@ -146,24 +272,224 @@ export default function AdminConfigPage() {
 
             {tab === 'templates' && (
               <div className="space-y-4">
-                <p className="text-sm text-gray-500">Approval pipeline templates and their gates</p>
-                {templates.map(t => (
-                  <div key={t.id} className="border border-gray-200 rounded-lg p-3">
-                    <h3 className="font-medium capitalize mb-2">{t.pipeline_type.replace(/_/g, ' ')} Pipeline</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {(t.steps || []).sort((a, b) => a.step_number - b.step_number).map(s => (
-                        <div key={s.step_number}
-                          className="bg-gray-100 rounded px-3 py-1.5 text-xs flex items-center gap-2">
-                          <span className="bg-eaw-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px]">
-                            {s.step_number}
+                <p className="text-sm text-gray-500">Approval pipeline templates and their gates. Toggle gates on/off per template.</p>
+                {templates.map(t => {
+                  const isEditing = editingTemplate === t.id;
+                  const sortedSteps = [...(t.steps || [])].sort((a, b) => a.step_number - b.step_number);
+                  const enabledCount = sortedSteps.filter(s => s.is_enabled !== false).length;
+
+                  return (
+                    <div key={t.id} className={`border rounded-lg overflow-hidden ${isEditing ? 'border-eaw-primary ring-1 ring-eaw-primary/20' : 'border-gray-200'}`}>
+                      {/* Template header */}
+                      <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {t.name || t.pipeline_type.replace(/_/g, ' ')} Pipeline
+                          </h3>
+                          <span className="text-xs text-gray-400">
+                            {t.template_key} &middot; {enabledCount} active gate{enabledCount !== 1 ? 's' : ''}
                           </span>
-                          <span className="font-medium">{s.gate_name}</span>
-                          <span className="text-gray-400">({s.approver_role}, {s.sla_days}d)</span>
                         </div>
-                      ))}
+                        {!isEditing ? (
+                          <button
+                            onClick={() => startEditTemplate(t)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <Pencil size={12} /> Edit Gates
+                          </button>
+                        ) : (
+                          <button
+                            onClick={cancelEditTemplate}
+                            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                          >
+                            <X size={14} /> Cancel
+                          </button>
+                        )}
+                      </div>
+
+                      {/* View mode */}
+                      {!isEditing && (
+                        <div className="p-4">
+                          <div className="flex flex-wrap gap-2">
+                            {sortedSteps.map((s, i) => {
+                              const enabled = s.is_enabled !== false;
+                              return (
+                                <div key={s.id || i}
+                                  className={`rounded px-3 py-1.5 text-xs flex items-center gap-2 ${
+                                    enabled ? 'bg-gray-100' : 'bg-gray-50 opacity-50'
+                                  }`}>
+                                  <span className={`rounded-full w-5 h-5 flex items-center justify-center text-[10px] text-white ${
+                                    enabled ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}>
+                                    {enabled ? s.step_number : '\u2013'}
+                                  </span>
+                                  <span className={`font-medium ${!enabled ? 'line-through text-gray-400' : ''}`}>
+                                    {s.gate_name}
+                                  </span>
+                                  <span className="text-gray-400">
+                                    ({roleLabel(s.approver_role)}, {s.sla_days}d)
+                                  </span>
+                                  {!enabled && (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">OFF</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Edit mode */}
+                      {isEditing && (
+                        <div className="p-4 space-y-3">
+                          {/* Warning banner */}
+                          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-700">
+                            <AlertTriangle size={14} className="shrink-0" />
+                            Changes apply to <strong>new requests only</strong>. In-flight approvals are not affected.
+                          </div>
+
+                          {/* Step rows */}
+                          <div className="space-y-1">
+                            {editSteps.map((s, i) => {
+                              const enabledNum = editSteps.slice(0, i + 1).filter(x => x.is_enabled).length;
+                              return (
+                                <div
+                                  key={s.id || `new-${i}`}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${
+                                    s.is_enabled
+                                      ? 'border-gray-200 bg-white'
+                                      : 'border-gray-100 bg-gray-50 opacity-60'
+                                  }`}
+                                >
+                                  {/* Reorder arrows */}
+                                  <div className="flex flex-col gap-0.5">
+                                    <button
+                                      onClick={() => moveStep(i, -1)}
+                                      disabled={i === 0}
+                                      className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                                    >
+                                      <ChevronUp size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => moveStep(i, 1)}
+                                      disabled={i === editSteps.length - 1}
+                                      className="text-gray-400 hover:text-gray-600 disabled:opacity-30"
+                                    >
+                                      <ChevronDown size={14} />
+                                    </button>
+                                  </div>
+
+                                  {/* Step number */}
+                                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ${
+                                    s.is_enabled ? 'bg-green-500' : 'bg-gray-300'
+                                  }`}>
+                                    {s.is_enabled ? enabledNum : '\u2013'}
+                                  </span>
+
+                                  {/* Gate name */}
+                                  <span className={`text-sm font-medium flex-1 ${!s.is_enabled ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                                    {s.gate_name}
+                                  </span>
+
+                                  {/* Role */}
+                                  <span className="text-xs text-gray-400 w-28 text-right">
+                                    {roleLabel(s.approver_role)}
+                                  </span>
+
+                                  {/* SLA input */}
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={30}
+                                      value={s.sla_days}
+                                      onChange={e => updateStepSla(i, Math.max(1, parseInt(e.target.value) || 1))}
+                                      className="w-12 text-center text-xs border border-gray-200 rounded px-1 py-1"
+                                    />
+                                    <span className="text-[10px] text-gray-400">days</span>
+                                  </div>
+
+                                  {/* Toggle */}
+                                  <button
+                                    onClick={() => toggleStepEnabled(i)}
+                                    className={`transition-colors ${s.is_enabled ? 'text-green-500' : 'text-gray-300'}`}
+                                    title={s.is_enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
+                                  >
+                                    {s.is_enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                                  </button>
+
+                                  {/* Remove */}
+                                  <button
+                                    onClick={() => removeStep(i)}
+                                    className="text-gray-300 hover:text-red-500 transition-colors"
+                                    title="Remove gate from template"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Add gate */}
+                          <div className="relative">
+                            {!showAddGate ? (
+                              <button
+                                onClick={() => setShowAddGate(true)}
+                                disabled={availableGates.length === 0}
+                                className="flex items-center gap-1.5 text-xs text-eaw-primary hover:underline disabled:text-gray-300 disabled:no-underline"
+                              >
+                                <Plus size={14} /> Add a gate
+                              </button>
+                            ) : (
+                              <div className="border border-gray-200 rounded-md bg-white shadow-sm p-2 max-h-48 overflow-y-auto">
+                                <div className="text-[10px] text-gray-400 uppercase tracking-wide mb-1 px-1">Select a gate to add</div>
+                                {availableGates.map(g => (
+                                  <button
+                                    key={g.gate_name}
+                                    onClick={() => addGateFromCatalog(g)}
+                                    className="w-full text-left px-2 py-1.5 text-xs rounded hover:bg-blue-50 flex items-center justify-between"
+                                  >
+                                    <span className="font-medium">{g.gate_name}</span>
+                                    <span className="text-gray-400">{roleLabel(g.approver_role)} &middot; {g.default_sla}d</span>
+                                  </button>
+                                ))}
+                                <button
+                                  onClick={() => setShowAddGate(false)}
+                                  className="w-full text-center px-2 py-1 text-[10px] text-gray-400 hover:text-gray-600 mt-1"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Save / Cancel buttons */}
+                          <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
+                            <button
+                              onClick={() => saveTemplateSteps(t.id)}
+                              disabled={saving}
+                              className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium rounded-md text-white transition-colors"
+                              style={{ backgroundColor: '#337ab7' }}
+                            >
+                              <Save size={14} />
+                              {saving ? 'Saving...' : 'Save Changes'}
+                            </button>
+                            <button
+                              onClick={cancelEditTemplate}
+                              className="px-4 py-2 text-xs font-medium rounded-md border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <span className="text-[10px] text-gray-400 ml-auto">
+                              {editSteps.filter(s => s.is_enabled).length} of {editSteps.length} gates enabled
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

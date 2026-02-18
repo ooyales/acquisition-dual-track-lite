@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, ClipboardCheck, Shield, FolderOpen,
   DollarSign, TrendingUp, Truck, Bot, BarChart3, Settings, PlusCircle,
-  ChevronLeft,
+  ChevronLeft, Map,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -13,6 +13,7 @@ interface SidebarProps {
 
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/process-guide', icon: Map, label: 'Process Guide' },
   { to: '/intake', icon: PlusCircle, label: 'Start Acquisition' },
   { to: '/requests', icon: FileText, label: 'Requests' },
   { to: '/approvals', icon: ClipboardCheck, label: 'Approval Queue', roles: ['admin', 'branch_chief', 'cto', 'ko', 'legal', 'cio', 'budget'] },

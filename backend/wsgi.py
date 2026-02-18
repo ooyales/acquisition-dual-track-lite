@@ -30,3 +30,13 @@ with app.app_context():
                 fcntl.flock(lock_file, fcntl.LOCK_EX)
             finally:
                 fcntl.flock(lock_file, fcntl.LOCK_UN)
+    else:
+        # Run lightweight migrations for existing databases
+        from sqlalchemy import inspect, text
+        inspector = inspect(db.engine)
+        cols = [c['name'] for c in inspector.get_columns('approval_template_steps')]
+        if 'is_enabled' not in cols:
+            db.session.execute(text(
+                'ALTER TABLE approval_template_steps ADD COLUMN is_enabled BOOLEAN NOT NULL DEFAULT 1'
+            ))
+            db.session.commit()

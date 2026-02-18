@@ -39,6 +39,7 @@ class ApprovalTemplateStep(db.Model):
     is_conditional = db.Column(db.Boolean, default=False)
     condition_rule = db.Column(db.Text)  # JSON conditions
     escalation_to = db.Column(db.String(100))  # Role to escalate to on timeout
+    is_enabled = db.Column(db.Boolean, default=True, nullable=False)
 
     def to_dict(self):
         return {
@@ -50,6 +51,7 @@ class ApprovalTemplateStep(db.Model):
             'sla_days': self.sla_days,
             'is_conditional': self.is_conditional,
             'escalation_to': self.escalation_to,
+            'is_enabled': self.is_enabled,
         }
 
 

@@ -15,6 +15,7 @@ import ExecutionCreatePage from './pages/ExecutionCreatePage';
 import ExecutionDetailPage from './pages/ExecutionDetailPage';
 import AIAssistantPage from './pages/AIAssistantPage';
 import PipelineDashboardPage from './pages/PipelineDashboardPage';
+import ProcessGuidePage from './pages/ProcessGuidePage';
 import AdminConfigPage from './pages/AdminConfigPage';
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/execution/:id" element={<ExecutionDetailPage />} />
         <Route path="/ai" element={<AIAssistantPage />} />
         <Route path="/pipeline" element={<PipelineDashboardPage />} />
+        <Route path="/process-guide" element={<ProcessGuidePage />} />
         <Route path="/admin" element={<AdminConfigPage />} />
       </Route>
     </Routes>

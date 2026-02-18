@@ -9,4 +9,7 @@ export const adminApi = {
   getUsers: () => client.get('/admin/users').then(r => r.data),
   updateUser: (id: number, data: Record<string, unknown>) =>
     client.put(`/admin/users/${id}`, data).then(r => r.data),
+  updateTemplateSteps: (templateId: number, steps: unknown[]) =>
+    client.put(`/admin/templates/${templateId}/steps`, { steps }).then(r => r.data),
+  getGateCatalog: () => client.get('/admin/gate-catalog').then(r => r.data),
 };

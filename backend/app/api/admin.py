@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
 from app.extensions import db
 from app.models.threshold import ThresholdConfig
-from app.models.approval import ApprovalTemplate
+from app.models.approval import ApprovalTemplate, ApprovalTemplateStep
 from app.models.document import DocumentTemplate, DocumentRule
 from app.models.user import User
 from app.models.intake_path import IntakePath
@@ -68,6 +68,90 @@ def list_templates():
     return jsonify({
         'templates': [t.to_dict() for t in templates],
     })
+
+
+@admin_bp.route('/templates/<int:template_id>/steps', methods=['PUT'])
+@jwt_required()
+def update_template_steps(template_id):
+    """Bulk update steps for an approval template (toggle, reorder, SLA)."""
+    err = _require_admin()
+    if err:
+        return err
+
+    template = ApprovalTemplate.query.get_or_404(template_id)
+    data = request.get_json()
+    if not data or 'steps' not in data:
+        return jsonify({'error': 'No steps data provided'}), 400
+
+    steps_data = data['steps']
+
+    # Build lookup of existing steps
+    existing_steps = {s.id: s for s in ApprovalTemplateStep.query.filter_by(
+        template_id=template_id).all()}
+    seen_ids = set()
+
+    for i, sd in enumerate(steps_data):
+        step_id = sd.get('id')
+        if step_id and step_id in existing_steps:
+            # Update existing step
+            step = existing_steps[step_id]
+            step.step_number = i + 1
+            step.is_enabled = sd.get('is_enabled', True)
+            step.sla_days = sd.get('sla_days', step.sla_days)
+            seen_ids.add(step_id)
+        else:
+            # New step added from catalog
+            step = ApprovalTemplateStep(
+                template_id=template_id,
+                step_number=i + 1,
+                step_name=sd.get('gate_name', ''),
+                approver_role=sd.get('approver_role', ''),
+                sla_days=sd.get('sla_days', 5),
+                is_enabled=sd.get('is_enabled', True),
+            )
+            db.session.add(step)
+
+    # Remove steps not in submission (admin deleted them)
+    for sid, step in existing_steps.items():
+        if sid not in seen_ids:
+            db.session.delete(step)
+
+    db.session.commit()
+
+    # Return updated template
+    template = ApprovalTemplate.query.get(template_id)
+    return jsonify(template.to_dict())
+
+
+GATE_CATALOG = [
+    {'gate_name': 'ISS Review', 'approver_role': 'branch_chief', 'default_sla': 5},
+    {'gate_name': 'ASR Review', 'approver_role': 'branch_chief', 'default_sla': 7},
+    {'gate_name': 'Finance Review', 'approver_role': 'budget', 'default_sla': 5},
+    {'gate_name': 'KO Review', 'approver_role': 'ko', 'default_sla': 7},
+    {'gate_name': 'Legal Review', 'approver_role': 'legal', 'default_sla': 5},
+    {'gate_name': 'CIO Approval', 'approver_role': 'cio', 'default_sla': 5},
+    {'gate_name': 'Senior Leadership', 'approver_role': 'branch_chief', 'default_sla': 7},
+    {'gate_name': 'PM Approval', 'approver_role': 'branch_chief', 'default_sla': 3},
+    {'gate_name': 'CTO Approval', 'approver_role': 'cto', 'default_sla': 3},
+    {'gate_name': 'COR Authorization', 'approver_role': 'ko', 'default_sla': 3},
+    {'gate_name': 'COR Confirmation', 'approver_role': 'branch_chief', 'default_sla': 3},
+    {'gate_name': 'COR + PM Justification', 'approver_role': 'branch_chief', 'default_sla': 3},
+    {'gate_name': 'KO Execution', 'approver_role': 'ko', 'default_sla': 5},
+    {'gate_name': 'KO Action', 'approver_role': 'ko', 'default_sla': 5},
+    {'gate_name': 'KO Determination', 'approver_role': 'ko', 'default_sla': 5},
+    {'gate_name': 'KO Contract Mod', 'approver_role': 'ko', 'default_sla': 5},
+    {'gate_name': 'FM Funding Identification', 'approver_role': 'budget', 'default_sla': 5},
+    {'gate_name': 'BM LOA Confirmation', 'approver_role': 'budget', 'default_sla': 5},
+    {'gate_name': 'Supervisor', 'approver_role': 'branch_chief', 'default_sla': 2},
+    {'gate_name': 'GPC Holder', 'approver_role': 'budget', 'default_sla': 2},
+]
+
+
+@admin_bp.route('/gate-catalog', methods=['GET'])
+@jwt_required()
+def gate_catalog():
+    """Return catalog of available gate types for template configuration."""
+    return jsonify({'catalog': GATE_CATALOG})
 
 
 @admin_bp.route('/document-templates', methods=['GET'])

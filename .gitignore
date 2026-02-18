@@ -39,6 +39,7 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 data/
+!frontend/src/data/
 
 # Docker
 docker-compose.override.yml
