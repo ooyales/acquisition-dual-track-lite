@@ -22,11 +22,11 @@ export default function Modal({ open, onClose, title, children }: ModalProps) {
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-12" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-12" onClick={onClose}>
       <div className="fixed inset-0 bg-black/50" />
       <div
-        className="relative bg-white rounded-lg shadow-xl w-full max-w-5xl mx-4 flex flex-col"
-        style={{ maxHeight: '80vh' }}
+        className="relative bg-white rounded-lg shadow-xl w-full max-w-5xl mx-2 sm:mx-4 flex flex-col"
+        style={{ maxHeight: '85vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

@@ -155,3 +155,28 @@ body {
 .kpi-card {
   @apply bg-white rounded shadow-eaw p-5 flex items-center gap-4;
 }
+
+/* ── Mobile Responsive (< md breakpoint) ───────────────────────────── */
+@media (max-width: 767px) {
+  .eaw-table thead th {
+    @apply px-3 py-2 text-[10px];
+  }
+  .eaw-table tbody td {
+    @apply px-3 py-2;
+  }
+
+  .kpi-card {
+    @apply p-3 gap-3;
+  }
+}
+
+/* ── Mobile Card Table (stacked layout alternative for tables) ────── */
+.mobile-card-table {
+  @apply space-y-3;
+}
+.mobile-card-row {
+  @apply bg-white rounded shadow-sm p-3 border border-gray-200;
+}
+.mobile-card-row.clickable {
+  @apply cursor-pointer active:bg-gray-50;
+}

@@ -103,7 +103,7 @@ export default function ExecutionCreatePage() {
           <div className="bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2 text-sm">{error}</div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Acquisition Request</label>
             <select className="select-field" value={selectedRequest}
@@ -128,7 +128,7 @@ export default function ExecutionCreatePage() {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Execution Type</label>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {[
               { value: 'odc', label: 'ODC (Other Direct Cost)' },
               { value: 'travel', label: 'Travel' },
@@ -155,12 +155,12 @@ export default function ExecutionCreatePage() {
           <TravelForm form={form} onChange={handleChange} />
         )}
 
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-4 border-t border-gray-200">
           <span className="text-sm text-gray-500">
             Estimated amount: <span className="font-medium">${computeAmount().toLocaleString()}</span>
           </span>
           <button onClick={handleSubmit} disabled={submitting || !selectedRequest || !selectedClin}
-            className="btn-primary flex items-center gap-2">
+            className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
             <Send size={16} /> {submitting ? 'Submitting...' : 'Submit'}
           </button>
         </div>

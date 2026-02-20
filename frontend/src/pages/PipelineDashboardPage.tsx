@@ -123,14 +123,16 @@ export default function PipelineDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pipeline stages */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
           <h2 className="text-lg font-semibold mb-1">Pipeline Stage Distribution</h2>
           <p className="text-xs text-gray-400 mb-3">Click a bar to see requests at that gate</p>
-          <PipelineFlow data={pipeline} onBarClick={handlePipelineBarClick} />
+          <div className="overflow-x-auto">
+            <PipelineFlow data={pipeline} onBarClick={handlePipelineBarClick} />
+          </div>
         </div>
 
         {/* Cycle time by pipeline */}
-        <div className="bg-white rounded-lg border border-gray-200 p-5">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
           <h2 className="text-lg font-semibold mb-3">Average Cycle Time by Pipeline</h2>
           {cycleTime.length === 0 ? (
             <p className="text-sm text-gray-500 text-center py-8">No cycle time data available.</p>
@@ -138,14 +140,14 @@ export default function PipelineDashboardPage() {
             <div className="space-y-3">
               {cycleTime.map(ct => (
                 <div key={ct.pipeline} className="flex items-center gap-3">
-                  <span className="text-sm w-28 capitalize">{ct.pipeline.replace(/_/g, ' ')}</span>
+                  <span className="text-sm w-20 sm:w-28 capitalize shrink-0">{ct.pipeline.replace(/_/g, ' ')}</span>
                   <div className="flex-1 bg-gray-200 rounded-full h-4">
                     <div className="bg-eaw-primary h-4 rounded-full flex items-center justify-end pr-2 text-white text-[10px]"
                       style={{ width: `${Math.min((ct.avg_days / 120) * 100, 100)}%`, minWidth: '3rem' }}>
                       {ct.avg_days}d
                     </div>
                   </div>
-                  <span className="text-xs text-gray-500 w-20">{ct.total_requests} requests</span>
+                  <span className="text-xs text-gray-500 w-20 shrink-0">{ct.total_requests} requests</span>
                 </div>
               ))}
             </div>
@@ -154,10 +156,12 @@ export default function PipelineDashboardPage() {
       </div>
 
       {/* Funding overview */}
-      <div className="bg-white rounded-lg border border-gray-200 p-5">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-5">
         <h2 className="text-lg font-semibold mb-1">LOA Funding Overview</h2>
         <p className="text-xs text-gray-400 mb-3">Click a bar to see requests linked to that LOA</p>
-        <FundingBar data={funding} onBarClick={handleFundingBarClick} />
+        <div className="overflow-x-auto">
+          <FundingBar data={funding} onBarClick={handleFundingBarClick} />
+        </div>
       </div>
 
       {/* Drill-down modal */}

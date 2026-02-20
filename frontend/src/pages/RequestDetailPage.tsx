@@ -77,38 +77,42 @@ export default function RequestDetailPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/requests')} className="p-1 hover:bg-gray-200 rounded">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-gray-900">{request.title}</h1>
-            <StatusBadge status={request.status} />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <button onClick={() => navigate('/requests')} className="p-1 hover:bg-gray-200 rounded shrink-0">
+            <ArrowLeft size={18} />
+          </button>
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl font-bold text-gray-900">{request.title}</h1>
+              <StatusBadge status={request.status} />
+            </div>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {ACQUISITION_TYPE_LABELS[request.acquisition_type || ''] || request.acquisition_type}
+              {' · '}{TIER_LABELS[request.tier || ''] || request.tier}
+              {' · '}{PIPELINE_LABELS[request.pipeline || ''] || request.pipeline} pipeline
+              {' · '}${(request.estimated_value || 0).toLocaleString()}
+            </p>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {ACQUISITION_TYPE_LABELS[request.acquisition_type || ''] || request.acquisition_type}
-            {' · '}{TIER_LABELS[request.tier || ''] || request.tier}
-            {' · '}{PIPELINE_LABELS[request.pipeline || ''] || request.pipeline} pipeline
-            {' · '}${(request.estimated_value || 0).toLocaleString()}
-          </p>
         </div>
-        {request.status === 'draft' && (
-          <button onClick={handleSubmit} className="btn-primary flex items-center gap-2">
-            <Send size={16} /> Submit
+        <div className="flex flex-wrap gap-2">
+          {request.status === 'draft' && (
+            <button onClick={handleSubmit} className="btn-primary flex items-center gap-2">
+              <Send size={16} /> Submit
+            </button>
+          )}
+          <button onClick={() => navigate(`/process-guide?requestId=${reqId}`)} className="btn-secondary flex items-center gap-2">
+            <Map size={16} /> Process Guide
           </button>
-        )}
-        <button onClick={() => navigate(`/process-guide?requestId=${reqId}`)} className="btn-secondary flex items-center gap-2">
-          <Map size={16} /> Process Guide
-        </button>
-        <button onClick={() => navigate(`/requests/${reqId}/clins`)} className="btn-secondary flex items-center gap-2">
-          <Package size={16} /> Manage CLINs
-        </button>
-        {canDelete && (
-          <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
-            <Trash2 size={16} /> Delete
+          <button onClick={() => navigate(`/requests/${reqId}/clins`)} className="btn-secondary flex items-center gap-2">
+            <Package size={16} /> Manage CLINs
           </button>
-        )}
+          {canDelete && (
+            <button onClick={handleDelete} className="btn-danger flex items-center gap-2">
+              <Trash2 size={16} /> Delete
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Info Request Alert */}
@@ -131,10 +135,10 @@ export default function RequestDetailPage() {
       ))}
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors ${
+            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-eaw-primary text-eaw-primary font-medium'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -176,7 +180,7 @@ export default function RequestDetailPage() {
               </div>
             )}
             {request.existing_contract_number && (
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">Contract #</span>
                   <p className="font-medium">{request.existing_contract_number}</p>

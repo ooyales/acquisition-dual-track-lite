@@ -144,7 +144,7 @@ export default function LOAPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <DollarSign size={24} className="text-eaw-primary" />
           <div>
@@ -152,7 +152,7 @@ export default function LOAPage() {
             <p className="text-sm text-gray-500">{loas.length} LOAs</p>
           </div>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary flex items-center gap-2">
+        <button onClick={() => setShowForm(!showForm)} className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus size={16} /> Add LOA
         </button>
       </div>
@@ -249,7 +249,7 @@ export default function LOAPage() {
                     </div>
 
                     {/* Breakdown */}
-                    <div className="grid grid-cols-4 gap-2 text-xs">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       <div><span className="text-gray-400">Projected</span><p className="font-medium">${(loa.projected_amount || 0).toLocaleString()}</p></div>
                       <div><span className="text-gray-400">Committed</span><p className="font-medium">${(loa.committed_amount || 0).toLocaleString()}</p></div>
                       <div><span className="text-gray-400">Obligated</span><p className="font-medium">${(loa.obligated_amount || 0).toLocaleString()}</p></div>

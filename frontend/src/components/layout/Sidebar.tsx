@@ -9,6 +9,9 @@ import { useAuthStore } from '../../store/authStore';
 interface SidebarProps {
   collapsed: boolean;
   onCollapse: () => void;
+  isMobile?: boolean;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
 }
 
 const navItems = [
@@ -26,7 +29,7 @@ const navItems = [
   { to: '/admin', icon: Settings, label: 'Admin Config', roles: ['admin'] },
 ];
 
-export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
+export default function Sidebar({ collapsed, onCollapse, isMobile, mobileOpen, onMobileClose }: SidebarProps) {
   const { user } = useAuthStore();
 
   const filtered = navItems.filter(item => {
@@ -34,6 +37,41 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
     return user && item.roles.includes(user.role);
   });
 
+  const showLabels = isMobile || !collapsed;
+
+  // Mobile: fixed overlay drawer
+  if (isMobile) {
+    return (
+      <aside
+        className={`fixed top-0 left-0 bottom-0 z-40 w-56 bg-white border-r border-gray-200 flex flex-col pt-14 transition-transform duration-200 ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        <div className="flex-1 py-3 overflow-y-auto">
+          {filtered.map(item => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              onClick={() => onMobileClose?.()}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 min-h-[44px] text-sm transition-colors ${
+                  isActive
+                    ? 'bg-eaw-primary/10 text-eaw-primary border-r-3 border-eaw-primary font-medium'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                }`
+              }
+            >
+              <item.icon size={18} className="shrink-0" />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </aside>
+    );
+  }
+
+  // Desktop: flex child sidebar
   return (
     <aside
       className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-200 ${
@@ -56,7 +94,7 @@ export default function Sidebar({ collapsed, onCollapse }: SidebarProps) {
             title={collapsed ? item.label : undefined}
           >
             <item.icon size={18} className="shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
+            {showLabels && <span>{item.label}</span>}
           </NavLink>
         ))}
       </div>

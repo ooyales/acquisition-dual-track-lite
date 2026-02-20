@@ -43,7 +43,7 @@ function TrackSelector({
   ];
 
   return (
-    <div className="flex gap-1 bg-gray-100 rounded-lg p-1 w-fit">
+    <div className="flex flex-wrap gap-1 bg-gray-100 rounded-lg p-1 w-fit">
       {tracks.map(t => (
         <button
           key={t.key}
@@ -235,7 +235,7 @@ function AdvisoryLane({
         <span className="text-xs text-white/70 ml-1">(runs in parallel with Review & Approval)</span>
       </div>
       <div className="bg-white p-3">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           {phase.steps.map(step => {
             const advStatus = getAdvisoryStatus(request, step.id);
             const isComplete = advStatus === 'complete' || advStatus === 'completed';
@@ -460,9 +460,9 @@ export default function ProcessGuidePage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Map size={24} className="text-eaw-primary" />
+          <Map size={24} className="text-eaw-primary shrink-0" />
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Acquisition Process Guide</h1>
             <p className="text-sm text-gray-500">
@@ -473,7 +473,7 @@ export default function ProcessGuidePage() {
         {request && (
           <Link
             to={`/requests/${request.id}`}
-            className="flex items-center gap-1.5 text-sm text-eaw-primary hover:underline"
+            className="flex items-center gap-1.5 text-sm text-eaw-primary hover:underline shrink-0"
           >
             <ArrowLeft size={14} />
             Back to request
@@ -483,8 +483,8 @@ export default function ProcessGuidePage() {
 
       {/* Request context banner */}
       {request && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center gap-3">
-          <MapPin size={20} className="text-blue-600 shrink-0" />
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start sm:items-center gap-3">
+          <MapPin size={20} className="text-blue-600 shrink-0 mt-0.5 sm:mt-0" />
           <div>
             <p className="text-sm font-medium text-blue-800">
               Viewing journey for: {request.title}

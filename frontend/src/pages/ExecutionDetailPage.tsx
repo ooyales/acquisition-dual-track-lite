@@ -116,12 +116,12 @@ export default function ExecutionDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
-      <div className="flex items-center gap-3">
-        <button onClick={() => navigate('/execution')} className="p-1 hover:bg-gray-200 rounded">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <button onClick={() => navigate('/execution')} className="p-1 hover:bg-gray-200 rounded self-start shrink-0">
           <ArrowLeft size={18} />
         </button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-bold text-gray-900">
               {EXECUTION_TYPE_LABELS[exec.execution_type] || exec.execution_type} #{exec.id}
             </h1>
@@ -193,7 +193,7 @@ export default function ExecutionDetailPage() {
         {/* Approval timeline */}
         <div className="space-y-2">
           <h3 className="font-medium text-sm">Approval Status</h3>
-          <div className="flex gap-4 text-sm">
+          <div className="flex flex-col sm:flex-row gap-4 text-sm">
             <div className="flex items-center gap-2">
               <div className={`w-5 h-5 rounded-full flex items-center justify-center ${exec.pm_approved_at ? 'bg-green-500' : 'bg-gray-300'}`}>
                 {exec.pm_approved_at ? <Check size={10} className="text-white" /> : null}
@@ -271,7 +271,7 @@ export default function ExecutionDetailPage() {
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t border-gray-200">
+        <div className="flex flex-wrap gap-2 pt-4 border-t border-gray-200">
           {exec.status === 'draft' && (
             <button onClick={handleSubmit} className="btn-primary text-sm flex items-center gap-1">
               <Send size={14} /> Submit for Approval
@@ -290,25 +290,27 @@ export default function ExecutionDetailPage() {
           )}
 
           {(exec.status === 'approved' || exec.status === 'authorized') && (
-            <div className="flex items-end gap-3 flex-1">
-              <div className="flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 w-full">
+              <div>
                 <label className="block text-xs text-gray-500 mb-1">Invoice #</label>
                 <input className="input-field text-sm" value={invoiceForm.invoice_number}
                   onChange={e => setInvoiceForm(f => ({ ...f, invoice_number: e.target.value }))} />
               </div>
-              <div className="flex-1">
+              <div>
                 <label className="block text-xs text-gray-500 mb-1">Amount</label>
                 <input type="number" className="input-field text-sm" value={invoiceForm.invoice_amount}
                   onChange={e => setInvoiceForm(f => ({ ...f, invoice_amount: e.target.value }))} />
               </div>
-              <div className="flex-1">
+              <div>
                 <label className="block text-xs text-gray-500 mb-1">Date</label>
                 <input type="date" className="input-field text-sm" value={invoiceForm.invoice_date}
                   onChange={e => setInvoiceForm(f => ({ ...f, invoice_date: e.target.value }))} />
               </div>
-              <button onClick={handleInvoice} className="btn-primary text-sm flex items-center gap-1">
-                <FileText size={14} /> Submit Invoice
-              </button>
+              <div className="flex items-end">
+                <button onClick={handleInvoice} className="btn-primary text-sm flex items-center gap-1 w-full justify-center">
+                  <FileText size={14} /> Submit Invoice
+                </button>
+              </div>
             </div>
           )}
 

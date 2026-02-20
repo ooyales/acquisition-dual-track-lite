@@ -5,6 +5,7 @@ import { requestsApi } from '../api/requests';
 import StatusBadge from '../components/common/StatusBadge';
 import { ACQUISITION_TYPE_LABELS, TIER_LABELS, PIPELINE_LABELS } from '../types';
 import type { AcquisitionRequest } from '../types';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 const PER_PAGE = 15;
 
@@ -17,6 +18,7 @@ export default function RequestListPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setLoading(true);
@@ -46,23 +48,23 @@ export default function RequestListPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Acquisition Requests</h1>
           <p className="text-sm text-gray-500 mt-1">{total} requests</p>
         </div>
-        <button onClick={() => navigate('/intake')} className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/intake')} className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus size={16} /> New Acquisition
         </button>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <div className="relative flex-1">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input className="input-field" style={{ paddingLeft: '2.25rem' }} placeholder="Search requests..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <select className="select-field" style={{ width: 'auto' }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
+        <select className="select-field w-full sm:w-auto" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
           <option value="">All Statuses</option>
           {statuses.map(s => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
         </select>
@@ -76,47 +78,76 @@ export default function RequestListPage() {
         </div>
       ) : (
         <>
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <table className="eaw-table">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Title</th>
-                  <th>Type</th>
-                  <th>Tier</th>
-                  <th>Value</th>
-                  <th>Status</th>
-                  <th>Action With</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map(req => (
-                  <tr key={req.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/requests/${req.id}`)}>
-                    <td className="text-gray-500">#{req.id}</td>
-                    <td className="font-medium">{req.title}</td>
-                    <td className="text-sm">{ACQUISITION_TYPE_LABELS[req.acquisition_type || ''] || req.acquisition_type}</td>
-                    <td><StatusBadge status={req.tier || ''} label={TIER_LABELS[req.tier || '']} /></td>
-                    <td className="text-sm">${(req.estimated_value || 0).toLocaleString()}</td>
-                    <td><StatusBadge status={req.status} /></td>
-                    <td className="text-sm">
-                      {req.action_with ? (
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                          req.action_with.includes('Requestor') ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {req.action_with}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">—</span>
-                      )}
-                    </td>
+          {isMobile ? (
+            <div className="mobile-card-table">
+              {requests.map(req => (
+                <div
+                  key={req.id}
+                  className="mobile-card-row clickable"
+                  onClick={() => navigate(`/requests/${req.id}`)}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="font-medium text-sm">#{req.id} {req.title}</span>
+                    <StatusBadge status={req.status} />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                    <span>{ACQUISITION_TYPE_LABELS[req.acquisition_type || ''] || req.acquisition_type}</span>
+                    <StatusBadge status={req.tier || ''} label={TIER_LABELS[req.tier || '']} />
+                    <span>${(req.estimated_value || 0).toLocaleString()}</span>
+                    {req.action_with && (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        req.action_with.includes('Requestor') ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {req.action_with}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <table className="eaw-table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Tier</th>
+                    <th>Value</th>
+                    <th>Status</th>
+                    <th>Action With</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {requests.map(req => (
+                    <tr key={req.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/requests/${req.id}`)}>
+                      <td className="text-gray-500">#{req.id}</td>
+                      <td className="font-medium">{req.title}</td>
+                      <td className="text-sm">{ACQUISITION_TYPE_LABELS[req.acquisition_type || ''] || req.acquisition_type}</td>
+                      <td><StatusBadge status={req.tier || ''} label={TIER_LABELS[req.tier || '']} /></td>
+                      <td className="text-sm">${(req.estimated_value || 0).toLocaleString()}</td>
+                      <td><StatusBadge status={req.status} /></td>
+                      <td className="text-sm">
+                        {req.action_with ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            req.action_with.includes('Requestor') ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {req.action_with}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white rounded-lg border border-gray-200 px-4 py-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white rounded-lg border border-gray-200 px-4 py-3">
               <p className="text-sm text-gray-500">
                 Showing {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, total)} of {total}
               </p>

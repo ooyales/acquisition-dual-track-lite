@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { TrendingUp, Plus, FileText, Pencil, Trash2, Save, X } from 'lucide-react';
 import { forecastsApi } from '../api/forecasts';
 import StatusBadge from '../components/common/StatusBadge';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface Forecast {
   id: number;
@@ -53,6 +54,7 @@ export default function ForecastPage() {
   };
   const [form, setForm] = useState(emptyForm);
   const [editForm, setEditForm] = useState(emptyForm);
+  const isMobile = useIsMobile();
 
   const loadForecasts = () => {
     forecastsApi.list().then(data => {
@@ -129,7 +131,7 @@ export default function ForecastPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <TrendingUp size={24} className="text-eaw-primary" />
           <div>
@@ -137,7 +139,7 @@ export default function ForecastPage() {
             <p className="text-sm text-gray-500">{forecasts.length} forecast items</p>
           </div>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary flex items-center gap-2">
+        <button onClick={() => setShowForm(!showForm)} className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus size={16} /> Add Forecast
         </button>
       </div>
@@ -177,6 +179,80 @@ export default function ForecastPage() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading...</div>
+      ) : isMobile ? (
+        <div className="mobile-card-table">
+          {forecasts.map(f => (
+            editingId === f.id ? (
+              <div key={f.id} className="mobile-card-row border-eaw-primary ring-1 ring-eaw-primary/20 space-y-2">
+                <input className={inp} placeholder="Title" value={editForm.title}
+                  onChange={e => setEditForm(ef => ({ ...ef, title: e.target.value }))} />
+                <div className="grid grid-cols-2 gap-2">
+                  <select className={inp} value={editForm.source}
+                    onChange={e => setEditForm(ef => ({ ...ef, source: e.target.value }))}>
+                    {SOURCE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                  <input type="number" className={inp} placeholder="Est. Value ($)" value={editForm.estimated_value}
+                    onChange={e => setEditForm(ef => ({ ...ef, estimated_value: e.target.value }))} />
+                  <input type="date" className={inp} value={editForm.need_by_date}
+                    onChange={e => setEditForm(ef => ({ ...ef, need_by_date: e.target.value }))} />
+                  <select className={inp} value={editForm.color_of_money}
+                    onChange={e => setEditForm(ef => ({ ...ef, color_of_money: e.target.value }))}>
+                    {COLOR_OPTIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                  </select>
+                  <input className={inp} placeholder="Contract #" value={editForm.contract_number}
+                    onChange={e => setEditForm(ef => ({ ...ef, contract_number: e.target.value }))} />
+                  <input className={inp} placeholder="CLIN #" value={editForm.clin_number}
+                    onChange={e => setEditForm(ef => ({ ...ef, clin_number: e.target.value }))} />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={handleSave} disabled={saving}
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded text-white"
+                    style={{ backgroundColor: '#337ab7' }}>
+                    <Save size={11} /> {saving ? '...' : 'Save'}
+                  </button>
+                  <button onClick={() => setEditingId(null)} className="px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div key={f.id} className="mobile-card-row">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <span className="font-medium text-sm">{f.title}</span>
+                  <StatusBadge status={f.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-2">
+                  <span className="capitalize">{(f.source || '').replace(/_/g, ' ')}</span>
+                  <span>${(f.estimated_value || 0).toLocaleString()}</span>
+                  {f.need_by_date && <span>by {f.need_by_date}</span>}
+                  {f.color_of_money && <span>{COLOR_LABELS[f.color_of_money] || f.color_of_money}</span>}
+                  {f.contract_number && <span>Contract: {f.contract_number}</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => startEdit(f)}
+                    className="text-gray-400 hover:text-eaw-primary transition-colors" title="Edit">
+                    <Pencil size={13} />
+                  </button>
+                  {!f.acquisition_request_id && (
+                    <button onClick={() => handleDelete(f)}
+                      className="text-gray-400 hover:text-red-500 transition-colors" title="Delete">
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                  {f.status === 'forecasted' && !f.acquisition_request_id && (
+                    <button onClick={() => handleCreateRequest(f.id)}
+                      className="text-xs text-eaw-primary hover:underline flex items-center gap-1 ml-1">
+                      <FileText size={11} /> Create Req
+                    </button>
+                  )}
+                  {f.acquisition_request_id && (
+                    <span className="text-xs text-gray-400 ml-1">Req #{f.acquisition_request_id}</span>
+                  )}
+                </div>
+              </div>
+            )
+          ))}
+        </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="eaw-table">

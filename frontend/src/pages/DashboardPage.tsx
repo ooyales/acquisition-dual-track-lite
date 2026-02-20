@@ -8,6 +8,7 @@ import Modal from '../components/common/Modal';
 import { RequestDrillDownTable, ExecutionDrillDownTable } from '../components/common/DrillDownTable';
 import { ACQUISITION_TYPE_LABELS, TIER_LABELS, STATUS_LABELS } from '../types';
 import type { AcquisitionRequest } from '../types';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface Metrics {
   requests: { total: number; by_status: Record<string, number>; by_type: Record<string, number>; by_tier: Record<string, number>; total_value: number };
@@ -24,6 +25,7 @@ export default function DashboardPage() {
   const [recentRequests, setRecentRequests] = useState<AcquisitionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -152,6 +154,32 @@ export default function DashboardPage() {
         </div>
         {recentRequests.length === 0 ? (
           <p className="text-gray-500 text-sm">No requests yet.</p>
+        ) : isMobile ? (
+          <div className="mobile-card-table">
+            {recentRequests.map(req => (
+              <div
+                key={req.id}
+                className="mobile-card-row clickable"
+                onClick={() => navigate(`/requests/${req.id}`)}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium text-sm">{req.title}</span>
+                  <StatusBadge status={req.status} />
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
+                  <span>{ACQUISITION_TYPE_LABELS[req.acquisition_type || ''] || req.acquisition_type}</span>
+                  <StatusBadge status={req.tier || ''} label={TIER_LABELS[req.tier || '']} />
+                  {req.action_with && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      req.action_with.includes('Requestor') ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {req.action_with}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="eaw-table">

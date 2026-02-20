@@ -87,9 +87,9 @@ export default function ApprovalQueuePage() {
         <div className="space-y-3">
           {queue.map(item => (
             <div key={item.id} className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <button onClick={() => navigate(`/requests/${item.request_id}`)}
                       className="font-medium text-eaw-primary hover:underline">
                       {item.request_title}
@@ -102,7 +102,7 @@ export default function ApprovalQueuePage() {
                   </p>
                 </div>
                 {actionId !== item.id && (
-                  <button onClick={() => setActionId(item.id)} className="btn-primary text-sm">
+                  <button onClick={() => setActionId(item.id)} className="btn-primary text-sm shrink-0">
                     Review
                   </button>
                 )}
@@ -117,7 +117,7 @@ export default function ApprovalQueuePage() {
                     value={comments}
                     onChange={e => setComments(e.target.value)}
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <button onClick={() => handleAction(item.id, 'approve')}
                       className="btn-success text-sm flex items-center gap-1">
                       <Check size={14} /> Approve

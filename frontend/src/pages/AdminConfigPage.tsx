@@ -309,10 +309,10 @@ export default function AdminConfigPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 border-b border-gray-200">
+      <div className="flex gap-1 border-b border-gray-200 overflow-x-auto">
         {tabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2.5 text-sm border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm border-b-2 transition-colors whitespace-nowrap ${
               tab === t.key
                 ? 'border-eaw-primary text-eaw-primary font-medium'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -448,7 +448,7 @@ export default function AdminConfigPage() {
                               return (
                                 <div
                                   key={s.id || `new-${i}`}
-                                  className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-colors ${
+                                  className={`flex flex-wrap items-center gap-2 px-3 py-2 rounded-md border transition-colors ${
                                     s.is_enabled
                                       ? 'border-gray-200 bg-white'
                                       : 'border-gray-100 bg-gray-50 opacity-60'
@@ -610,21 +610,21 @@ export default function AdminConfigPage() {
 
             {tab === 'advisory' && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <p className="text-sm text-gray-500">Configure which advisory teams are triggered for each pipeline type</p>
                   </div>
                   {!editingAdvisory ? (
                     <button
                       onClick={startEditAdvisory}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
                     >
                       <Pencil size={12} /> Edit Triggers
                     </button>
                   ) : (
                     <button
                       onClick={cancelEditAdvisory}
-                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+                      className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 shrink-0"
                     >
                       <X size={14} /> Cancel
                     </button>
@@ -689,72 +689,74 @@ export default function AdminConfigPage() {
                         {configs.map(c => (
                           <div
                             key={c.id}
-                            className={`flex items-center gap-3 px-3 py-2.5 rounded-md border transition-colors ${
+                            className={`px-3 py-2.5 rounded-md border transition-colors ${
                               c.is_enabled
                                 ? 'border-gray-200 bg-white'
                                 : 'border-gray-100 bg-gray-50 opacity-60'
                             }`}
                           >
-                            {/* Toggle */}
-                            <button
-                              onClick={() => updateAdvConfig(c.id, 'is_enabled', !c.is_enabled)}
-                              className={`transition-colors shrink-0 ${c.is_enabled ? 'text-green-500' : 'text-gray-300'}`}
-                              title={c.is_enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
-                            >
-                              {c.is_enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
-                            </button>
-
-                            {/* Team badge */}
-                            <span className={`text-xs font-semibold px-2 py-1 rounded border shrink-0 w-28 text-center ${
-                              c.is_enabled
-                                ? teamColor[c.team] || 'bg-gray-100 text-gray-700 border-gray-200'
-                                : 'bg-gray-50 text-gray-400 border-gray-100'
-                            }`}>
-                              {teamLabels[c.team] || c.team}
-                            </span>
-
-                            {/* SLA */}
-                            <div className="flex items-center gap-1">
-                              <label className="text-[10px] text-gray-400">SLA</label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={30}
-                                value={c.sla_days}
-                                onChange={e => updateAdvConfig(c.id, 'sla_days', Math.max(1, parseInt(e.target.value) || 1))}
-                                className="w-12 text-center text-xs border border-gray-200 rounded px-1 py-1"
-                                disabled={!c.is_enabled}
-                              />
-                              <span className="text-[10px] text-gray-400">days</span>
-                            </div>
-
-                            {/* Blocks gate */}
-                            <div className="flex items-center gap-1">
-                              <label className="text-[10px] text-gray-400">Blocks</label>
-                              <select
-                                value={c.blocks_gate || ''}
-                                onChange={e => updateAdvConfig(c.id, 'blocks_gate', e.target.value)}
-                                className="text-xs border border-gray-200 rounded px-1.5 py-1"
-                                disabled={!c.is_enabled}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              {/* Toggle */}
+                              <button
+                                onClick={() => updateAdvConfig(c.id, 'is_enabled', !c.is_enabled)}
+                                className={`transition-colors shrink-0 ${c.is_enabled ? 'text-green-500' : 'text-gray-300'}`}
+                                title={c.is_enabled ? 'Enabled — click to disable' : 'Disabled — click to enable'}
                               >
-                                {gateOptions.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
-                            </div>
+                                {c.is_enabled ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                              </button>
 
-                            {/* Threshold */}
-                            <div className="flex items-center gap-1 ml-auto">
-                              <label className="text-[10px] text-gray-400">Min $</label>
-                              <input
-                                type="number"
-                                min={0}
-                                step={1000}
-                                value={c.threshold_min}
-                                onChange={e => updateAdvConfig(c.id, 'threshold_min', Math.max(0, parseFloat(e.target.value) || 0))}
-                                className="w-24 text-right text-xs border border-gray-200 rounded px-1.5 py-1"
-                                disabled={!c.is_enabled}
-                              />
+                              {/* Team badge */}
+                              <span className={`text-xs font-semibold px-2 py-1 rounded border shrink-0 w-28 text-center ${
+                                c.is_enabled
+                                  ? teamColor[c.team] || 'bg-gray-100 text-gray-700 border-gray-200'
+                                  : 'bg-gray-50 text-gray-400 border-gray-100'
+                              }`}>
+                                {teamLabels[c.team] || c.team}
+                              </span>
+
+                              {/* SLA */}
+                              <div className="flex items-center gap-1">
+                                <label className="text-[10px] text-gray-400">SLA</label>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={30}
+                                  value={c.sla_days}
+                                  onChange={e => updateAdvConfig(c.id, 'sla_days', Math.max(1, parseInt(e.target.value) || 1))}
+                                  className="w-12 text-center text-xs border border-gray-200 rounded px-1 py-1"
+                                  disabled={!c.is_enabled}
+                                />
+                                <span className="text-[10px] text-gray-400">days</span>
+                              </div>
+
+                              {/* Blocks gate */}
+                              <div className="flex items-center gap-1">
+                                <label className="text-[10px] text-gray-400">Blocks</label>
+                                <select
+                                  value={c.blocks_gate || ''}
+                                  onChange={e => updateAdvConfig(c.id, 'blocks_gate', e.target.value)}
+                                  className="text-xs border border-gray-200 rounded px-1.5 py-1"
+                                  disabled={!c.is_enabled}
+                                >
+                                  {gateOptions.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Threshold */}
+                              <div className="flex items-center gap-1 sm:ml-auto">
+                                <label className="text-[10px] text-gray-400">Min $</label>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  step={1000}
+                                  value={c.threshold_min}
+                                  onChange={e => updateAdvConfig(c.id, 'threshold_min', Math.max(0, parseFloat(e.target.value) || 0))}
+                                  className="w-24 text-right text-xs border border-gray-200 rounded px-1.5 py-1"
+                                  disabled={!c.is_enabled}
+                                />
+                              </div>
                             </div>
                           </div>
                         ))}

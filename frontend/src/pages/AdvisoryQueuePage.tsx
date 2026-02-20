@@ -130,9 +130,9 @@ export default function AdvisoryQueuePage() {
         <div className="space-y-3">
           {queue.map(item => (
             <div key={item.advisory.id} className="bg-white rounded-lg border border-gray-200 p-4">
-              <div className="flex items-start justify-between mb-2">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
                 <div>
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <button onClick={() => navigate(`/requests/${item.advisory.request_id}`)}
                       className="font-medium text-eaw-primary hover:underline">
                       {item.request?.title || `Request #${item.advisory.request_id}`}
@@ -145,7 +145,7 @@ export default function AdvisoryQueuePage() {
                   </p>
                 </div>
                 {activeId !== item.advisory.id && (
-                  <button onClick={() => openForm(item)} className="btn-primary text-sm">
+                  <button onClick={() => openForm(item)} className="btn-primary text-sm shrink-0">
                     Provide Input
                   </button>
                 )}
@@ -207,7 +207,7 @@ export default function AdvisoryQueuePage() {
                       onChange={e => setFindings(e.target.value)}
                       placeholder="Enter your findings and analysis..." />
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Recommendation</label>
                       <select className="select-field" value={recommendation}
@@ -221,12 +221,12 @@ export default function AdvisoryQueuePage() {
                     </div>
                     {recommendation !== 'request_info' && (
                       <>
-                        <label className="flex items-center gap-2 text-sm pt-6">
+                        <label className="flex items-center gap-2 text-sm sm:pt-6">
                           <input type="checkbox" checked={impactsStrategy}
                             onChange={e => setImpactsStrategy(e.target.checked)} />
                           Impacts acquisition strategy
                         </label>
-                        <label className="flex items-center gap-2 text-sm pt-6">
+                        <label className="flex items-center gap-2 text-sm sm:pt-6">
                           <input type="checkbox" checked={blocksGate}
                             onChange={e => setBlocksGate(e.target.checked)} />
                           Blocks gate progression
@@ -246,7 +246,7 @@ export default function AdvisoryQueuePage() {
                     </div>
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => handleSubmit(item.advisory.id)}
                       disabled={recommendation === 'request_info' && !infoRequestMessage.trim()}

@@ -4,6 +4,7 @@ import { Truck, Plus } from 'lucide-react';
 import { executionApi } from '../api/execution';
 import StatusBadge from '../components/common/StatusBadge';
 import { EXECUTION_TYPE_LABELS } from '../types';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 interface ExecItem {
   id: number;
@@ -23,6 +24,7 @@ export default function ExecutionListPage() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('');
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const params: Record<string, string> = {};
@@ -35,7 +37,7 @@ export default function ExecutionListPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Truck size={24} className="text-eaw-primary" />
           <div>
@@ -43,13 +45,13 @@ export default function ExecutionListPage() {
             <p className="text-sm text-gray-500">{items.length} execution requests</p>
           </div>
         </div>
-        <button onClick={() => navigate('/execution/new')} className="btn-primary flex items-center gap-2">
+        <button onClick={() => navigate('/execution/new')} className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center">
           <Plus size={16} /> New Execution
         </button>
       </div>
 
       <div className="flex gap-2">
-        <select className="select-field w-auto" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+        <select className="select-field w-full sm:w-auto" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
           <option value="">All Types</option>
           <option value="odc">ODC</option>
           <option value="travel">Travel</option>
@@ -58,6 +60,28 @@ export default function ExecutionListPage() {
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Loading...</div>
+      ) : isMobile ? (
+        <div className="mobile-card-table">
+          {items.map(item => (
+            <div
+              key={item.id}
+              className="mobile-card-row clickable"
+              onClick={() => navigate(`/execution/${item.id}`)}
+            >
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <span className="font-medium text-sm">
+                  #{item.id} {EXECUTION_TYPE_LABELS[item.execution_type] || item.execution_type}
+                </span>
+                <StatusBadge status={item.status} />
+              </div>
+              <p className="text-sm text-gray-600 mb-1">{item.description}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500">
+                <span>{item.clin_number || `CLIN-${item.clin_id}`}</span>
+                <span>${(item.requested_amount || 0).toLocaleString()}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="eaw-table">
