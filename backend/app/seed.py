@@ -357,30 +357,30 @@ def _seed_psc_codes():
 def _seed_loas(users):
     budget_user = users.get('budget')
     loa_data = [
-        # (name, approp, fund, bac, cc, oc, pe, fy, total, proj, comm, oblig, ftype, exp, project, task)
+        # (name, approp, fund, bac, cc, oc, pe, fy, total, proj, comm, oblig, ftype, exp, project, task, exptype)
         ('FY26 O&M IT Operations', '21-1234', 'OM-IT', '3600', 'CC-100', '25.3', 'PE-01', '2026',
-         4200000, 620000, 950000, 1800000, 'om', '2026-09-30', 'IT-OPS-2026', 'Help Desk Support'),
+         4200000, 620000, 950000, 1800000, 'om', '2026-09-30', 'IT-OPS-2026', 'Help Desk Support', 'Contractual Services'),
         ('FY26 O&M Cybersecurity', '21-1235', 'OM-CY', '3610', 'CC-110', '25.3', 'PE-02', '2026',
-         1800000, 200000, 400000, 800000, 'om', '2026-09-30', 'CYBER-2026', 'SOC Operations'),
+         1800000, 200000, 400000, 800000, 'om', '2026-09-30', 'CYBER-2026', 'SOC Operations', 'Contractual Services'),
         ('FY26 RDT&E IT Modernization', '21-5678', 'RD-IT', '3700', 'CC-200', '25.3', 'PE-03', '2026',
-         3500000, 500000, 800000, 1200000, 'rdte', '2027-09-30', 'IMOD-2026', 'Cloud Migration'),
+         3500000, 500000, 800000, 1200000, 'rdte', '2027-09-30', 'IMOD-2026', 'Cloud Migration', 'Equipment'),
         ('FY26 Procurement IT Equipment', '21-9012', 'PR-IT', '3400', 'CC-300', '31.0', 'PE-04', '2026',
-         2000000, 300000, 500000, 700000, 'procurement', '2028-09-30', 'EQUIP-2026', 'Endpoint Refresh'),
+         2000000, 300000, 500000, 700000, 'procurement', '2028-09-30', 'EQUIP-2026', 'Endpoint Refresh', 'Equipment'),
         ('FY26 Working Capital IT Shared Services', '21-3456', 'WC-IT', '4000', 'CC-400', '25.3', 'PE-05', '2026',
-         1500000, 150000, 300000, 600000, 'working_capital', '2026-09-30', 'SHARED-2026', 'Data Center Ops'),
+         1500000, 150000, 300000, 600000, 'working_capital', '2026-09-30', 'SHARED-2026', 'Data Center Ops', 'Contractual Services'),
         ('FY26 Cyber O&M', '21-1236', 'OM-CYBER', '3611', 'CC-115', '25.3', 'PE-06', '2026',
-         2500000, 350000, 500000, 900000, 'om', '2026-09-30', 'CYBER-2026', 'Threat Management'),
+         2500000, 350000, 500000, 900000, 'om', '2026-09-30', 'CYBER-2026', 'Threat Management', 'Contractual Services'),
         ('FY26 Cyber PDW', '21-1237', 'PDW-CYBER', '3612', 'CC-116', '25.3', 'PE-07', '2026',
-         1200000, 100000, 200000, 350000, 'procurement', '2028-09-30', 'CYBER-PDW-26', 'Security Tools'),
+         1200000, 100000, 200000, 350000, 'procurement', '2028-09-30', 'CYBER-PDW-26', 'Security Tools', 'Equipment'),
     ]
     loas = {}
-    for i, (name, approp, fund, bac, cc, oc, pe, fy, total, proj_amt, comm, oblig, ftype, exp, project, task) in enumerate(loa_data):
+    for i, (name, approp, fund, bac, cc, oc, pe, fy, total, proj_amt, comm, oblig, ftype, exp, project, task, exptype) in enumerate(loa_data):
         loa = LineOfAccounting(
             display_name=name, appropriation=approp, fund_code=fund,
             budget_activity_code=bac, cost_center=cc, object_class=oc,
             program_element=pe, fiscal_year=fy, total_allocation=total,
             projected_amount=proj_amt, committed_amount=comm, obligated_amount=oblig,
-            fund_type=ftype, expiration_date=exp, status='active',
+            fund_type=ftype, expenditure_type=exptype, expiration_date=exp, status='active',
             managed_by_id=budget_user.id if budget_user else None,
             project=project, task=task,
         )

@@ -18,10 +18,22 @@ interface LOA {
   available_balance: number;
   uncommitted_balance: number;
   fund_type: string | null;
+  expenditure_type: string | null;
   project: string | null;
   task: string | null;
   status: string;
 }
+
+const EXPENDITURE_TYPES = [
+  { value: '', label: 'Select...' },
+  { value: 'Contractual Services', label: 'Contractual Services' },
+  { value: 'Equipment', label: 'Equipment' },
+  { value: 'Supplies & Materials', label: 'Supplies & Materials' },
+  { value: 'Travel', label: 'Travel' },
+  { value: 'Personnel', label: 'Personnel' },
+  { value: 'Grants & Fixed Charges', label: 'Grants & Fixed Charges' },
+  { value: 'Other', label: 'Other' },
+];
 
 const FUND_TYPES = [
   { value: '', label: 'Select...' },
@@ -46,7 +58,7 @@ export default function LOAPage() {
 
   const emptyForm = {
     fund_code: '', appropriation: '', fiscal_year: new Date().getFullYear().toString(),
-    total_allocation: '', display_name: '', fund_type: '', project: '', task: '',
+    total_allocation: '', display_name: '', fund_type: '', expenditure_type: '', project: '', task: '',
   };
   const [form, setForm] = useState(emptyForm);
   const [editForm, setEditForm] = useState(emptyForm);
@@ -68,6 +80,7 @@ export default function LOAPage() {
       total_allocation: parseFloat(form.total_allocation) || 0,
       fiscal_year: form.fiscal_year,
       fund_type: form.fund_type || null,
+      expenditure_type: form.expenditure_type || null,
       project: form.project || null,
       task: form.task || null,
     });
@@ -85,6 +98,7 @@ export default function LOAPage() {
       total_allocation: String(loa.total_allocation || 0),
       display_name: loa.display_name || '',
       fund_type: loa.fund_type || '',
+      expenditure_type: loa.expenditure_type || '',
       project: loa.project || '',
       task: loa.task || '',
     });
@@ -101,6 +115,7 @@ export default function LOAPage() {
         total_allocation: parseFloat(editForm.total_allocation) || 0,
         fiscal_year: editForm.fiscal_year,
         fund_type: editForm.fund_type || null,
+        expenditure_type: editForm.expenditure_type || null,
         project: editForm.project || null,
         task: editForm.task || null,
       });
@@ -173,6 +188,10 @@ export default function LOAPage() {
               onChange={e => setForm(f => ({ ...f, fund_type: e.target.value }))}>
               {FUND_TYPES.map(ft => <option key={ft.value} value={ft.value}>{ft.label}</option>)}
             </select>
+            <select className={inp} value={form.expenditure_type}
+              onChange={e => setForm(f => ({ ...f, expenditure_type: e.target.value }))}>
+              {EXPENDITURE_TYPES.map(et => <option key={et.value} value={et.value}>{et.label}</option>)}
+            </select>
             <input type="number" className={inp} placeholder="Fiscal Year" value={form.fiscal_year}
               onChange={e => setForm(f => ({ ...f, fiscal_year: e.target.value }))} />
             <input type="number" className={inp} placeholder="Total Allocation ($)" value={form.total_allocation}
@@ -228,8 +247,9 @@ export default function LOAPage() {
                       </div>
                     </div>
                     {loa.description && <p className="text-sm text-gray-500 mb-1">{loa.description}</p>}
-                    {(loa.project || loa.task) && (
-                      <div className="flex gap-3 text-xs text-gray-400 mb-2">
+                    {(loa.project || loa.task || loa.expenditure_type) && (
+                      <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-2">
+                        {loa.expenditure_type && <span>Expenditure: <span className="text-gray-600">{loa.expenditure_type}</span></span>}
                         {loa.project && <span>Project: <span className="text-gray-600">{loa.project}</span></span>}
                         {loa.task && <span>Task: <span className="text-gray-600">{loa.task}</span></span>}
                       </div>
@@ -288,6 +308,11 @@ export default function LOAPage() {
                         <select className={inp} value={editForm.fund_type}
                           onChange={e => setEditForm(f => ({ ...f, fund_type: e.target.value }))}>
                           {FUND_TYPES.map(ft => <option key={ft.value} value={ft.value}>{ft.label}</option>)}
+                        </select></div>
+                      <div><label className="text-[10px] text-gray-400">Expenditure Type</label>
+                        <select className={inp} value={editForm.expenditure_type}
+                          onChange={e => setEditForm(f => ({ ...f, expenditure_type: e.target.value }))}>
+                          {EXPENDITURE_TYPES.map(et => <option key={et.value} value={et.value}>{et.label}</option>)}
                         </select></div>
                       <div><label className="text-[10px] text-gray-400">Fiscal Year</label>
                         <input type="number" className={inp} value={editForm.fiscal_year}

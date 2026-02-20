@@ -21,6 +21,7 @@ class LineOfAccounting(db.Model):
     committed_amount = db.Column(db.Float, default=0)
     obligated_amount = db.Column(db.Float, default=0)
     fund_type = db.Column(db.String(30))  # om, rdte, procurement, milcon, working_capital
+    expenditure_type = db.Column(db.String(100))  # Contractual Services, Equipment, Supplies & Materials, Travel, Personnel, Grants & Fixed Charges, Other
     restrictions = db.Column(db.Text)
     expiration_date = db.Column(db.String(10))
     status = db.Column(db.String(20), default='active')  # active, low_balance, exhausted, expired, pending
@@ -55,6 +56,7 @@ class LineOfAccounting(db.Model):
             'available_balance': self.available_balance,
             'uncommitted_balance': self.uncommitted_balance,
             'fund_type': self.fund_type,
+            'expenditure_type': self.expenditure_type,
             'project': self.project,
             'task': self.task,
             'budget_activity_code': self.budget_activity_code,

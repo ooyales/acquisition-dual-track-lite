@@ -149,6 +149,7 @@ export interface LineOfAccounting {
   available_balance: number;
   uncommitted_balance: number;
   fund_type: string | null;
+  expenditure_type: string | null;
   status: string;
 }
 

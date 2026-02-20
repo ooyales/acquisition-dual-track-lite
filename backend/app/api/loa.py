@@ -69,6 +69,7 @@ def create_loa():
         committed_amount=data.get('committed_amount', 0),
         obligated_amount=data.get('obligated_amount', 0),
         fund_type=data.get('fund_type'),
+        expenditure_type=data.get('expenditure_type'),
         restrictions=data.get('restrictions'),
         expiration_date=data.get('expiration_date'),
         status=data.get('status', 'active'),
@@ -93,7 +94,7 @@ def update_loa(loa_id):
         'display_name', 'appropriation', 'fund_code', 'budget_activity_code',
         'cost_center', 'object_class', 'program_element', 'project', 'task',
         'fiscal_year', 'total_allocation', 'projected_amount', 'committed_amount',
-        'obligated_amount', 'fund_type', 'restrictions', 'expiration_date', 'status', 'notes',
+        'obligated_amount', 'fund_type', 'expenditure_type', 'restrictions', 'expiration_date', 'status', 'notes',
     ]
 
     for field in updatable:
