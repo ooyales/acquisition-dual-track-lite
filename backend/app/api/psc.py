@@ -9,7 +9,29 @@ psc_bp = Blueprint('psc', __name__)
 @psc_bp.route('/search', methods=['GET'])
 @jwt_required()
 def search_psc():
-    """Quick search endpoint for PSC typeahead."""
+    """Quick search endpoint for PSC typeahead (minimum 2 characters).
+    ---
+    tags:
+      - PSC Codes
+    parameters:
+      - name: q
+        in: query
+        type: string
+        required: true
+        description: Search query (min 2 chars)
+    responses:
+      200:
+        description: Matching PSC codes
+        schema:
+          type: object
+          properties:
+            codes:
+              type: array
+              items:
+                $ref: '#/definitions/PSCCode'
+            count:
+              type: integer
+    """
     q = request.args.get('q', '').strip()
     if len(q) < 2:
         return jsonify({'codes': [], 'count': 0})
@@ -32,7 +54,51 @@ def search_psc():
 @psc_bp.route('', methods=['GET'])
 @jwt_required()
 def list_psc():
-    """List PSC codes with filters."""
+    """List PSC codes with optional filters.
+    ---
+    tags:
+      - PSC Codes
+    parameters:
+      - name: category
+        in: query
+        type: string
+        required: false
+      - name: is_it_related
+        in: query
+        type: boolean
+        required: false
+      - name: service_or_product
+        in: query
+        type: string
+        required: false
+        enum: [service, product]
+      - name: buy_category
+        in: query
+        type: string
+        required: false
+        description: Maps to service_or_product filter
+      - name: search
+        in: query
+        type: string
+        required: false
+        description: Search across code, title, group_name
+      - name: group
+        in: query
+        type: string
+        required: false
+    responses:
+      200:
+        description: List of PSC codes
+        schema:
+          type: object
+          properties:
+            psc_codes:
+              type: array
+              items:
+                $ref: '#/definitions/PSCCode'
+            count:
+              type: integer
+    """
     query = PSCCode.query.filter_by(status='active')
 
     category = request.args.get('category')

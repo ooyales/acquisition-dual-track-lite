@@ -7,6 +7,45 @@ auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    """Authenticate user and get a JWT token.
+    ---
+    tags:
+      - Auth
+    security: []
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - email
+            - password
+          properties:
+            email:
+              type: string
+              example: admin@acq.local
+            password:
+              type: string
+              example: demo123
+    responses:
+      200:
+        description: Login successful
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+              description: JWT access token
+            user:
+              $ref: '#/definitions/User'
+      400:
+        description: Missing credentials
+      401:
+        description: Invalid credentials
+      403:
+        description: Account disabled
+    """
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -43,6 +82,18 @@ def login():
 @auth_bp.route('/me', methods=['GET'])
 @jwt_required()
 def me():
+    """Get current authenticated user profile.
+    ---
+    tags:
+      - Auth
+    responses:
+      200:
+        description: Current user profile
+        schema:
+          $ref: '#/definitions/User'
+      404:
+        description: User not found
+    """
     user_id = get_jwt_identity()
     user = User.query.get(int(user_id))
     if not user:

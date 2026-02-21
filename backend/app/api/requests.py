@@ -30,6 +30,75 @@ def _generate_request_number():
 @requests_bp.route('', methods=['GET'])
 @jwt_required()
 def list_requests():
+    """List acquisition requests with filters and pagination.
+    ---
+    tags:
+      - Requests
+    parameters:
+      - name: status
+        in: query
+        type: string
+        required: false
+        description: Filter by status (draft, submitted, approved, etc.)
+      - name: type
+        in: query
+        type: string
+        required: false
+        description: Filter by derived acquisition type
+      - name: tier
+        in: query
+        type: string
+        required: false
+        description: Filter by derived tier (micro, sat, above_sat)
+      - name: search
+        in: query
+        type: string
+        required: false
+        description: Search across title, request_number, description
+      - name: pipeline
+        in: query
+        type: string
+        required: false
+        description: Filter by derived pipeline
+      - name: fiscal_year
+        in: query
+        type: string
+        required: false
+      - name: sort
+        in: query
+        type: string
+        required: false
+        default: created_desc
+        enum: [created_desc, created_asc, value_desc, value_asc]
+      - name: page
+        in: query
+        type: integer
+        required: false
+        default: 1
+      - name: per_page
+        in: query
+        type: integer
+        required: false
+        default: 50
+    responses:
+      200:
+        description: Paginated list of acquisition requests
+        schema:
+          type: object
+          properties:
+            requests:
+              type: array
+              items:
+                $ref: '#/definitions/AcquisitionRequest'
+            total:
+              type: integer
+            page:
+              type: integer
+            pages:
+              type: integer
+            per_page:
+              type: integer
+    """
     query = AcquisitionRequest.query
 
     # Filters
@@ -93,6 +162,29 @@ def list_requests():
 @requests_bp.route('/<int:request_id>', methods=['GET'])
 @jwt_required()
 def get_request(request_id):
+    """Get a single acquisition request by ID.
+    ---
+    tags:
+      - Requests
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+      - name: include_relations
+        in: query
+        type: boolean
+        required: false
+        default: false
+        description: Include related CLINs, documents, approvals
+    responses:
+      200:
+        description: Acquisition request details
+        schema:
+          $ref: '#/definitions/AcquisitionRequest'
+      404:
+        description: Request not found
+    """
     acq = AcquisitionRequest.query.get_or_404(request_id)
     include = request.args.get('include_relations', 'false').lower() == 'true'
     return jsonify(acq.to_dict(include_relations=include))
@@ -101,6 +193,67 @@ def get_request(request_id):
 @requests_bp.route('', methods=['POST'])
 @jwt_required()
 def create_request():
+    """Create a new acquisition request.
+    ---
+    tags:
+      - Requests
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - title
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            estimated_value:
+              type: number
+              default: 0
+            fiscal_year:
+              type: string
+            priority:
+              type: string
+              default: medium
+              enum: [low, medium, high, critical]
+            need_by_date:
+              type: string
+              format: date
+            requestor_name:
+              type: string
+            requestor_org:
+              type: string
+            notes:
+              type: string
+            need_type:
+              type: string
+              description: Intake Q1 need type
+            need_sub_type:
+              type: string
+              description: Intake Q2 situation or Q5 change type
+            vendor_known:
+              type: string
+              description: Intake Q3 specific vendor
+            existing_vehicle:
+              type: string
+              description: Intake Q4 existing vehicle
+            buy_category:
+              type: string
+              description: Product, service, software_license, or mixed
+            predominant_element:
+              type: string
+              description: For mixed buy categories
+    responses:
+      201:
+        description: Request created
+        schema:
+          $ref: '#/definitions/AcquisitionRequest'
+      400:
+        description: Validation error
+    """
     user_id = get_jwt_identity()
     data = request.get_json()
     if not data:
@@ -160,6 +313,59 @@ def create_request():
 @requests_bp.route('/<int:request_id>', methods=['PUT'])
 @jwt_required()
 def update_request(request_id):
+    """Update an existing acquisition request.
+    ---
+    tags:
+      - Requests
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            estimated_value:
+              type: number
+            fiscal_year:
+              type: string
+            priority:
+              type: string
+            need_by_date:
+              type: string
+              format: date
+            notes:
+              type: string
+            requestor_name:
+              type: string
+            requestor_org:
+              type: string
+            awarded_date:
+              type: string
+              format: date
+            awarded_vendor:
+              type: string
+            awarded_amount:
+              type: number
+            po_number:
+              type: string
+    responses:
+      200:
+        description: Updated request
+        schema:
+          $ref: '#/definitions/AcquisitionRequest'
+      400:
+        description: No data provided
+      404:
+        description: Request not found
+    """
     acq = AcquisitionRequest.query.get_or_404(request_id)
     data = request.get_json()
     if not data:
@@ -188,7 +394,30 @@ def update_request(request_id):
 @requests_bp.route('/<int:request_id>', methods=['DELETE'])
 @jwt_required()
 def delete_request(request_id):
-    """Delete a request. Admins can delete any; requestors can delete own drafts."""
+    """Delete an acquisition request. Admins can delete any; requestors can delete own drafts.
+    ---
+    tags:
+      - Requests
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Request deleted
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+      403:
+        description: Permission denied
+      404:
+        description: Request not found
+    """
     user_id = int(get_jwt_identity())
     claims = get_jwt()
     role = claims.get('role', '')
@@ -217,6 +446,28 @@ def delete_request(request_id):
 @requests_bp.route('/<int:request_id>/submit', methods=['POST'])
 @jwt_required()
 def submit(request_id):
+    """Submit an acquisition request into the approval pipeline.
+    ---
+    tags:
+      - Requests
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Request submitted successfully
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            request:
+              $ref: '#/definitions/AcquisitionRequest'
+      400:
+        description: Cannot submit (validation error or wrong status)
+    """
     result = workflow_submit(request_id)
     if 'error' in result:
         return jsonify(result), 400

@@ -19,7 +19,48 @@ intake_bp = Blueprint('intake', __name__)
 @intake_bp.route('/derive', methods=['POST'])
 @jwt_required()
 def preview_derivation():
-    """Preview derivation without saving — used during intake wizard."""
+    """Preview derivation without saving -- used during intake wizard.
+    ---
+    tags:
+      - Intake
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            intake_q1_need_type:
+              type: string
+            intake_q2_situation:
+              type: string
+            intake_q3_specific_vendor:
+              type: string
+            intake_q5_change_type:
+              type: string
+            intake_q_buy_category:
+              type: string
+            intake_q_mixed_predominant:
+              type: string
+            estimated_value:
+              type: number
+    responses:
+      200:
+        description: Derived classification preview
+        schema:
+          type: object
+          properties:
+            derived_acquisition_type:
+              type: string
+            derived_tier:
+              type: string
+            derived_pipeline:
+              type: string
+            derived_contract_character:
+              type: string
+      400:
+        description: No data provided
+    """
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -31,10 +72,40 @@ def preview_derivation():
 @intake_bp.route('/options', methods=['GET'])
 @jwt_required()
 def get_intake_options():
-    """Return the question tree derived from the IntakePath table.
-
-    The frontend wizard uses this to dynamically build the intake form
-    based on the rules configuration workbook.
+    """Return the question tree for the intake wizard, derived from IntakePath table.
+    ---
+    tags:
+      - Intake
+    responses:
+      200:
+        description: Intake wizard options
+        schema:
+          type: object
+          properties:
+            q1_options:
+              type: array
+              items:
+                type: object
+                properties:
+                  value:
+                    type: string
+                  label:
+                    type: string
+                  description:
+                    type: string
+            q2_options:
+              type: object
+              description: Q2 options grouped by Q1 value
+            buy_category_options:
+              type: array
+              items:
+                type: object
+            vendor_options:
+              type: array
+              items:
+                type: object
+            paths_count:
+              type: integer
     """
     try:
         paths = IntakePath.query.order_by(IntakePath.path_id).all()
@@ -158,9 +229,63 @@ def _default_options():
 @intake_bp.route('/complete/<int:request_id>', methods=['POST'])
 @jwt_required()
 def complete_intake(request_id):
-    """
-    Save intake answers, derive classification, generate document checklist,
-    determine pipeline, and trigger advisory requests.
+    """Save intake answers, derive classification, generate document checklist, and trigger advisories.
+    ---
+    tags:
+      - Intake
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            intake_q1_need_type:
+              type: string
+            intake_q2_situation:
+              type: string
+            intake_q3_specific_vendor:
+              type: string
+            intake_q4_existing_vehicle:
+              type: string
+            intake_q5_change_type:
+              type: string
+            intake_q_buy_category:
+              type: string
+            intake_q_mixed_predominant:
+              type: string
+            estimated_value:
+              type: number
+            title:
+              type: string
+            description:
+              type: string
+    responses:
+      200:
+        description: Intake completed with derived classification
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            derived:
+              type: object
+            checklist_items:
+              type: integer
+            pipeline:
+              type: object
+            advisories_triggered:
+              type: array
+              items:
+                type: string
+            request:
+              $ref: '#/definitions/AcquisitionRequest'
+      404:
+        description: Request not found
     """
     acq = AcquisitionRequest.query.get_or_404(request_id)
     data = request.get_json() or {}
@@ -254,8 +379,51 @@ def complete_intake(request_id):
 @intake_bp.route('/recalculate/<int:request_id>', methods=['POST'])
 @jwt_required()
 def recalculate(request_id):
-    """
-    Oops recalculation — re-derive and re-evaluate checklist after changes.
+    """Re-derive and re-evaluate checklist after intake changes (oops recalculation).
+    ---
+    tags:
+      - Intake
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            intake_q1_need_type:
+              type: string
+            intake_q2_situation:
+              type: string
+            intake_q3_specific_vendor:
+              type: string
+            intake_q5_change_type:
+              type: string
+            intake_q_buy_category:
+              type: string
+            intake_q_mixed_predominant:
+              type: string
+            estimated_value:
+              type: number
+    responses:
+      200:
+        description: Recalculated classification and checklist diff
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            derived:
+              type: object
+            checklist_diff:
+              type: object
+            request:
+              $ref: '#/definitions/AcquisitionRequest'
+      404:
+        description: Request not found
     """
     acq = AcquisitionRequest.query.get_or_404(request_id)
     data = request.get_json() or {}

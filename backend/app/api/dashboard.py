@@ -15,7 +15,52 @@ dashboard_bp = Blueprint('dashboard', __name__)
 @dashboard_bp.route('', methods=['GET'])
 @jwt_required()
 def main_dashboard():
-    """Main dashboard metrics."""
+    """Main dashboard metrics (request counts, approvals, advisories, executions, forecasts).
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: Dashboard summary metrics
+        schema:
+          type: object
+          properties:
+            requests:
+              type: object
+              properties:
+                total:
+                  type: integer
+                by_status:
+                  type: object
+                by_type:
+                  type: object
+                by_tier:
+                  type: object
+                total_value:
+                  type: number
+            approvals:
+              type: object
+              properties:
+                active:
+                  type: integer
+                overdue:
+                  type: integer
+            advisories:
+              type: object
+              properties:
+                pending:
+                  type: integer
+            executions:
+              type: object
+              properties:
+                active:
+                  type: integer
+            forecasts:
+              type: object
+              properties:
+                open:
+                  type: integer
+    """
     # Request counts by status
     total = AcquisitionRequest.query.count()
     by_status = {}
@@ -102,7 +147,34 @@ def main_dashboard():
 @dashboard_bp.route('/pipeline', methods=['GET'])
 @jwt_required()
 def pipeline_dashboard():
-    """Gate flow pipeline data."""
+    """Gate flow pipeline data showing requests at each stage.
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: Pipeline funnel data
+        schema:
+          type: object
+          properties:
+            pipeline:
+              type: array
+              items:
+                type: object
+                properties:
+                  gate:
+                    type: string
+                  label:
+                    type: string
+                  count:
+                    type: integer
+                  total_value:
+                    type: number
+                  requests:
+                    type: array
+                    items:
+                      $ref: '#/definitions/AcquisitionRequest'
+    """
     # Requests grouped by pipeline status
     pipeline_data = []
 
@@ -147,7 +219,28 @@ def pipeline_dashboard():
 @dashboard_bp.route('/cycle-time', methods=['GET'])
 @jwt_required()
 def cycle_time():
-    """Cycle time analytics by pipeline type."""
+    """Cycle time analytics by pipeline type.
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: Average processing time by pipeline type
+        schema:
+          type: object
+          properties:
+            pipelines:
+              type: array
+              items:
+                type: object
+                properties:
+                  pipeline:
+                    type: string
+                  avg_days:
+                    type: integer
+                  total_requests:
+                    type: integer
+    """
     from sqlalchemy import func
     pipelines = db.session.query(
         AcquisitionRequest.derived_pipeline,
@@ -182,7 +275,53 @@ def cycle_time():
 @dashboard_bp.route('/funding', methods=['GET'])
 @jwt_required()
 def funding_dashboard():
-    """LOA overview and funding status."""
+    """LOA overview and funding status across all lines of accounting.
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: Funding dashboard data
+        schema:
+          type: object
+          properties:
+            loas:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  display_name:
+                    type: string
+                  fund_type:
+                    type: string
+                  total_allocation:
+                    type: number
+                  committed:
+                    type: number
+                  obligated:
+                    type: number
+                  available:
+                    type: number
+                  utilization_pct:
+                    type: number
+                  status:
+                    type: string
+            totals:
+              type: object
+              properties:
+                allocation:
+                  type: number
+                committed:
+                  type: number
+                obligated:
+                  type: number
+                available:
+                  type: number
+                utilization_pct:
+                  type: number
+    """
     loas = LineOfAccounting.query.all()
 
     loa_data = []
@@ -245,7 +384,38 @@ def _request_summary(r):
 @dashboard_bp.route('/drilldown/approvals', methods=['GET'])
 @jwt_required()
 def drilldown_approvals():
-    """Requests with active (optionally overdue) approval steps."""
+    """Drill-down: requests with active (optionally overdue) approval steps.
+    ---
+    tags:
+      - Dashboard
+    parameters:
+      - name: overdue_only
+        in: query
+        type: boolean
+        required: false
+        default: false
+        description: Only return requests with overdue approvals
+    responses:
+      200:
+        description: List of requests with active approvals
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              request_number:
+                type: string
+              title:
+                type: string
+              gate_name:
+                type: string
+              approver_role:
+                type: string
+              is_overdue:
+                type: boolean
+    """
     overdue_only = request.args.get('overdue_only', 'false').lower() == 'true'
     steps = ApprovalStep.query.filter_by(status='active').all()
     if overdue_only:
@@ -270,7 +440,29 @@ def drilldown_approvals():
 @dashboard_bp.route('/drilldown/advisories', methods=['GET'])
 @jwt_required()
 def drilldown_advisories():
-    """Requests with pending advisory inputs."""
+    """Drill-down: requests with pending advisory inputs.
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: List of requests with pending advisories
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              request_number:
+                type: string
+              title:
+                type: string
+              team:
+                type: string
+              advisory_status:
+                type: string
+    """
     advs = AdvisoryInput.query.filter(
         AdvisoryInput.status.in_(['requested', 'in_review'])
     ).all()
@@ -293,7 +485,31 @@ def drilldown_advisories():
 @dashboard_bp.route('/drilldown/executions', methods=['GET'])
 @jwt_required()
 def drilldown_executions():
-    """Active CLIN execution requests."""
+    """Drill-down: active CLIN execution requests.
+    ---
+    tags:
+      - Dashboard
+    responses:
+      200:
+        description: List of active execution requests
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              request_number:
+                type: string
+              title:
+                type: string
+              execution_type:
+                type: string
+              estimated_cost:
+                type: number
+              status:
+                type: string
+    """
     execs = CLINExecutionRequest.query.filter(
         CLINExecutionRequest.status.notin_(['complete', 'cancelled', 'rejected', 'draft'])
     ).all()
@@ -311,7 +527,32 @@ def drilldown_executions():
 @dashboard_bp.route('/drilldown/funding/<int:loa_id>', methods=['GET'])
 @jwt_required()
 def drilldown_funding(loa_id):
-    """Requests whose CLINs are linked to a specific LOA."""
+    """Drill-down: requests whose CLINs are linked to a specific LOA.
+    ---
+    tags:
+      - Dashboard
+    parameters:
+      - name: loa_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: List of requests linked to this LOA
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              request_number:
+                type: string
+              title:
+                type: string
+              clin_number:
+                type: string
+    """
     clins = AcquisitionCLIN.query.filter_by(loa_id=loa_id).all()
     seen = set()
     items = []

@@ -18,7 +18,34 @@ advisory_bp = Blueprint('advisory', __name__)
 @advisory_bp.route('/queue', methods=['GET'])
 @jwt_required()
 def advisory_queue():
-    """Get pending advisory items for the user's team."""
+    """Get pending advisory items for the current user's team.
+    ---
+    tags:
+      - Advisory
+    responses:
+      200:
+        description: Advisory queue for current user's team
+        schema:
+          type: object
+          properties:
+            queue:
+              type: array
+              items:
+                type: object
+                properties:
+                  advisory:
+                    $ref: '#/definitions/AdvisoryInput'
+                  request:
+                    $ref: '#/definitions/AcquisitionRequest'
+                  shared_attachments:
+                    type: array
+                    items:
+                      type: object
+            count:
+              type: integer
+            team:
+              type: string
+    """
     claims = get_jwt()
     user_team = claims.get('team', '')
     user_role = claims.get('role', '')
@@ -86,7 +113,32 @@ def advisory_queue():
 @advisory_bp.route('/request/<int:request_id>', methods=['GET'])
 @jwt_required()
 def request_advisories(request_id):
-    """Get all advisory inputs for a specific request."""
+    """Get all advisory inputs for a specific request.
+    ---
+    tags:
+      - Advisory
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Advisory inputs for the request
+        schema:
+          type: object
+          properties:
+            advisories:
+              type: array
+              items:
+                $ref: '#/definitions/AdvisoryInput'
+            count:
+              type: integer
+            shared_attachments:
+              type: array
+              items:
+                type: object
+    """
     advisories = AdvisoryInput.query.filter_by(request_id=request_id).all()
 
     # Collect all attachments across all advisories for this request
@@ -109,7 +161,45 @@ def request_advisories(request_id):
 @advisory_bp.route('/<int:advisory_id>', methods=['POST'])
 @jwt_required()
 def submit_advisory(advisory_id):
-    """Submit advisory findings."""
+    """Submit advisory findings (complete review, or request information).
+    ---
+    tags:
+      - Advisory
+    parameters:
+      - name: advisory_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            recommendation:
+              type: string
+              description: "approve, issues_found, request_info, etc."
+            findings:
+              type: string
+            status:
+              type: string
+              enum: [complete_no_issues, complete_issues_found, waived]
+            impacts_strategy:
+              type: boolean
+              default: false
+            info_request_message:
+              type: string
+              description: Message when recommendation is request_info
+    responses:
+      200:
+        description: Advisory updated
+        schema:
+          $ref: '#/definitions/AdvisoryInput'
+      400:
+        description: No data provided
+      404:
+        description: Advisory not found
+    """
     user_id = get_jwt_identity()
     claims = get_jwt()
     adv = AdvisoryInput.query.get_or_404(advisory_id)
@@ -199,7 +289,38 @@ def submit_advisory(advisory_id):
 @advisory_bp.route('/<int:advisory_id>/respond', methods=['POST'])
 @jwt_required()
 def respond_to_info_request(advisory_id):
-    """Requestor responds to an advisory info request, optionally with a file."""
+    """Requestor responds to an advisory info request, optionally with a file upload.
+    ---
+    tags:
+      - Advisory
+    consumes:
+      - multipart/form-data
+      - application/json
+    parameters:
+      - name: advisory_id
+        in: path
+        type: integer
+        required: true
+      - name: response
+        in: formData
+        type: string
+        required: false
+        description: Response text
+      - name: file
+        in: formData
+        type: file
+        required: false
+        description: Optional file attachment
+    responses:
+      200:
+        description: Response submitted
+        schema:
+          $ref: '#/definitions/AdvisoryInput'
+      400:
+        description: Advisory not awaiting information or no response provided
+      404:
+        description: Advisory not found
+    """
     claims = get_jwt()
     adv = AdvisoryInput.query.get_or_404(advisory_id)
 
@@ -261,7 +382,21 @@ def respond_to_info_request(advisory_id):
 @advisory_bp.route('/<int:advisory_id>/attachment', methods=['GET'])
 @jwt_required()
 def download_attachment(advisory_id):
-    """Download the file attached to an advisory info response."""
+    """Download the file attached to an advisory info response.
+    ---
+    tags:
+      - Advisory
+    parameters:
+      - name: advisory_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: File download
+      404:
+        description: No attachment found
+    """
     adv = AdvisoryInput.query.get_or_404(advisory_id)
     if not adv.info_response_filepath or not os.path.exists(adv.info_response_filepath):
         return jsonify({'error': 'No attachment found'}), 404
@@ -275,7 +410,42 @@ def download_attachment(advisory_id):
 @advisory_bp.route('/<int:advisory_id>', methods=['PUT'])
 @jwt_required()
 def update_advisory(advisory_id):
-    """Update an existing advisory."""
+    """Update an existing advisory (status, findings, recommendation).
+    ---
+    tags:
+      - Advisory
+    parameters:
+      - name: advisory_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [requested, in_review, complete_no_issues, complete_issues_found, waived]
+            findings:
+              type: string
+            recommendation:
+              type: string
+            impacts_strategy:
+              type: boolean
+            blocks_gate:
+              type: string
+    responses:
+      200:
+        description: Updated advisory
+        schema:
+          $ref: '#/definitions/AdvisoryInput'
+      400:
+        description: No data provided
+      404:
+        description: Advisory not found
+    """
     adv = AdvisoryInput.query.get_or_404(advisory_id)
     data = request.get_json()
     if not data:

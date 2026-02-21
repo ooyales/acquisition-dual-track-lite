@@ -12,7 +12,30 @@ approvals_bp = Blueprint('approvals', __name__)
 @approvals_bp.route('/queue', methods=['GET'])
 @jwt_required()
 def approval_queue():
-    """Get pending approval items for the current user's role."""
+    """Get pending approval items for the current user's role.
+    ---
+    tags:
+      - Approvals
+    responses:
+      200:
+        description: Approval queue for current user
+        schema:
+          type: object
+          properties:
+            queue:
+              type: array
+              items:
+                type: object
+                properties:
+                  step:
+                    $ref: '#/definitions/ApprovalStep'
+                  request:
+                    $ref: '#/definitions/AcquisitionRequest'
+            count:
+              type: integer
+            role:
+              type: string
+    """
     claims = get_jwt()
     user_role = claims.get('role', '')
 
@@ -52,7 +75,30 @@ def approval_queue():
 @approvals_bp.route('/request/<int:request_id>', methods=['GET'])
 @jwt_required()
 def request_approvals(request_id):
-    """Get approval steps and status for a specific request."""
+    """Get approval steps and status for a specific request.
+    ---
+    tags:
+      - Approvals
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Approval status with all steps
+        schema:
+          type: object
+          properties:
+            steps:
+              type: array
+              items:
+                $ref: '#/definitions/ApprovalStep'
+            current_step:
+              type: string
+            overall_status:
+              type: string
+    """
     status = get_approval_status(request_id)
     return jsonify(status)
 
@@ -60,7 +106,38 @@ def request_approvals(request_id):
 @approvals_bp.route('/<int:step_id>/action', methods=['POST'])
 @jwt_required()
 def approval_action(step_id):
-    """Process an approval action (approve/reject/return)."""
+    """Process an approval action (approve, reject, or return).
+    ---
+    tags:
+      - Approvals
+    parameters:
+      - name: step_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - action
+          properties:
+            action:
+              type: string
+              enum: [approve, reject, return]
+            comments:
+              type: string
+    responses:
+      200:
+        description: Action processed successfully
+      400:
+        description: Invalid action or step not actionable
+      403:
+        description: Role does not match required approver
+      404:
+        description: Step not found
+    """
     user_id = get_jwt_identity()
     claims = get_jwt()
     data = request.get_json()
@@ -93,7 +170,34 @@ def approval_action(step_id):
 @approvals_bp.route('/<int:step_id>/gate-check', methods=['GET'])
 @jwt_required()
 def gate_check(step_id):
-    """Check gate readiness for an approval step."""
+    """Check gate readiness for an approval step (documents, advisories).
+    ---
+    tags:
+      - Approvals
+    parameters:
+      - name: step_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Gate readiness check results
+        schema:
+          type: object
+          properties:
+            ready:
+              type: boolean
+            missing_documents:
+              type: array
+              items:
+                type: string
+            pending_advisories:
+              type: array
+              items:
+                type: string
+      404:
+        description: Step not found
+    """
     step = ApprovalStep.query.get_or_404(step_id)
 
     # Map step name to gate name

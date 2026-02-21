@@ -11,7 +11,38 @@ forecasts_bp = Blueprint('forecasts', __name__)
 @forecasts_bp.route('', methods=['GET'])
 @jwt_required()
 def list_forecasts():
-    """List demand forecasts."""
+    """List demand forecasts with optional filters.
+    ---
+    tags:
+      - Forecasts
+    parameters:
+      - name: status
+        in: query
+        type: string
+        required: false
+        description: Filter by status (forecasted, acknowledged, funded, acquisition_created)
+      - name: fiscal_year
+        in: query
+        type: string
+        required: false
+      - name: source
+        in: query
+        type: string
+        required: false
+        description: Filter by source (manual, contract_expiration, etc.)
+    responses:
+      200:
+        description: List of demand forecasts
+        schema:
+          type: object
+          properties:
+            forecasts:
+              type: array
+              items:
+                $ref: '#/definitions/DemandForecast'
+            count:
+              type: integer
+    """
     query = DemandForecast.query
 
     status = request.args.get('status')
@@ -36,7 +67,67 @@ def list_forecasts():
 @forecasts_bp.route('', methods=['POST'])
 @jwt_required()
 def create_forecast():
-    """Create a new demand forecast."""
+    """Create a new demand forecast.
+    ---
+    tags:
+      - Forecasts
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            title:
+              type: string
+            source:
+              type: string
+              default: manual
+            source_contract_id:
+              type: integer
+            estimated_value:
+              type: number
+            estimated_value_basis:
+              type: string
+            need_by_date:
+              type: string
+              format: date
+            acquisition_lead_time:
+              type: integer
+              description: Lead time in days
+            submit_by_date:
+              type: string
+              format: date
+            fiscal_year:
+              type: string
+              default: "2026"
+            suggested_loa_id:
+              type: integer
+            buy_category:
+              type: string
+            likely_acquisition_type:
+              type: string
+            status:
+              type: string
+              default: forecasted
+            assigned_to_id:
+              type: integer
+            contract_number:
+              type: string
+            clin_number:
+              type: string
+            color_of_money:
+              type: string
+            notes:
+              type: string
+    responses:
+      201:
+        description: Forecast created
+        schema:
+          $ref: '#/definitions/DemandForecast'
+      400:
+        description: No data provided
+    """
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
@@ -70,7 +161,44 @@ def create_forecast():
 @forecasts_bp.route('/<int:forecast_id>', methods=['PUT'])
 @jwt_required()
 def update_forecast(forecast_id):
-    """Update a forecast."""
+    """Update a demand forecast.
+    ---
+    tags:
+      - Forecasts
+    parameters:
+      - name: forecast_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            title:
+              type: string
+            estimated_value:
+              type: number
+            need_by_date:
+              type: string
+              format: date
+            fiscal_year:
+              type: string
+            status:
+              type: string
+            notes:
+              type: string
+    responses:
+      200:
+        description: Updated forecast
+        schema:
+          $ref: '#/definitions/DemandForecast'
+      400:
+        description: No data provided
+      404:
+        description: Forecast not found
+    """
     forecast = DemandForecast.query.get_or_404(forecast_id)
     data = request.get_json()
     if not data:
@@ -95,7 +223,32 @@ def update_forecast(forecast_id):
 @forecasts_bp.route('/<int:forecast_id>/create-request', methods=['POST'])
 @jwt_required()
 def create_request_from_forecast(forecast_id):
-    """Convert a forecast into an acquisition request."""
+    """Convert a forecast into an acquisition request.
+    ---
+    tags:
+      - Forecasts
+    parameters:
+      - name: forecast_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      201:
+        description: Acquisition request created from forecast
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            request:
+              $ref: '#/definitions/AcquisitionRequest'
+            forecast:
+              $ref: '#/definitions/DemandForecast'
+      400:
+        description: Forecast already has an associated request
+      404:
+        description: Forecast not found
+    """
     user_id = get_jwt_identity()
     forecast = DemandForecast.query.get_or_404(forecast_id)
 
@@ -146,7 +299,30 @@ def create_request_from_forecast(forecast_id):
 @forecasts_bp.route('/<int:forecast_id>', methods=['DELETE'])
 @jwt_required()
 def delete_forecast(forecast_id):
-    """Delete a forecast. Blocked if it has a linked acquisition request."""
+    """Delete a forecast. Blocked if it has a linked acquisition request.
+    ---
+    tags:
+      - Forecasts
+    parameters:
+      - name: forecast_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Forecast deleted
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+      400:
+        description: Cannot delete forecast with linked request
+      404:
+        description: Forecast not found
+    """
     forecast = DemandForecast.query.get_or_404(forecast_id)
 
     if forecast.acquisition_request_id:

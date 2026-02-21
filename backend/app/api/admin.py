@@ -26,7 +26,32 @@ def _require_admin():
 @admin_bp.route('/thresholds', methods=['GET'])
 @jwt_required()
 def list_thresholds():
-    """List all threshold configurations."""
+    """List all threshold configurations (micro-purchase, SAT, etc.).
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of threshold configurations
+        schema:
+          type: object
+          properties:
+            thresholds:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  dollar_limit:
+                    type: number
+                  far_reference:
+                    type: string
+                  description:
+                    type: string
+    """
     thresholds = ThresholdConfig.query.all()
     return jsonify({
         'thresholds': [t.to_dict() for t in thresholds],
@@ -36,7 +61,41 @@ def list_thresholds():
 @admin_bp.route('/thresholds/<int:threshold_id>', methods=['PUT'])
 @jwt_required()
 def update_threshold(threshold_id):
-    """Update a threshold configuration."""
+    """Update a threshold configuration. Requires admin or KO role.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: threshold_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            dollar_limit:
+              type: number
+            effective_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+            far_reference:
+              type: string
+            description:
+              type: string
+    responses:
+      200:
+        description: Updated threshold
+      403:
+        description: Admin access required
+      404:
+        description: Threshold not found
+    """
     err = _require_admin()
     if err:
         return err
@@ -64,7 +123,32 @@ def update_threshold(threshold_id):
 @admin_bp.route('/templates', methods=['GET'])
 @jwt_required()
 def list_templates():
-    """List approval templates."""
+    """List all approval templates (pipeline definitions).
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of approval templates with steps
+        schema:
+          type: object
+          properties:
+            templates:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  template_key:
+                    type: string
+                  steps:
+                    type: array
+                    items:
+                      type: object
+    """
     templates = ApprovalTemplate.query.all()
     return jsonify({
         'templates': [t.to_dict() for t in templates],
@@ -74,7 +158,51 @@ def list_templates():
 @admin_bp.route('/templates/<int:template_id>/steps', methods=['PUT'])
 @jwt_required()
 def update_template_steps(template_id):
-    """Bulk update steps for an approval template (toggle, reorder, SLA)."""
+    """Bulk update steps for an approval template (toggle, reorder, SLA). Requires admin.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: template_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - steps
+          properties:
+            steps:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    description: Existing step ID (omit for new steps)
+                  gate_name:
+                    type: string
+                  approver_role:
+                    type: string
+                  sla_days:
+                    type: integer
+                    default: 5
+                  is_enabled:
+                    type: boolean
+                    default: true
+    responses:
+      200:
+        description: Updated template with steps
+      400:
+        description: No steps data provided
+      403:
+        description: Admin access required
+      404:
+        description: Template not found
+    """
     err = _require_admin()
     if err:
         return err
@@ -151,14 +279,58 @@ GATE_CATALOG = [
 @admin_bp.route('/gate-catalog', methods=['GET'])
 @jwt_required()
 def gate_catalog():
-    """Return catalog of available gate types for template configuration."""
+    """Return catalog of available gate types for template configuration.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of available gate types
+        schema:
+          type: object
+          properties:
+            catalog:
+              type: array
+              items:
+                type: object
+                properties:
+                  gate_name:
+                    type: string
+                  approver_role:
+                    type: string
+                  default_sla:
+                    type: integer
+    """
     return jsonify({'catalog': GATE_CATALOG})
 
 
 @admin_bp.route('/document-templates', methods=['GET'])
 @jwt_required()
 def list_document_templates():
-    """List document templates."""
+    """List all document templates.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of document templates
+        schema:
+          type: object
+          properties:
+            templates:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  name:
+                    type: string
+                  doc_type_key:
+                    type: string
+                  ai_assistable:
+                    type: boolean
+    """
     templates = DocumentTemplate.query.order_by(DocumentTemplate.sort_order).all()
     return jsonify({
         'templates': [t.to_dict() for t in templates],
@@ -168,7 +340,29 @@ def list_document_templates():
 @admin_bp.route('/document-rules', methods=['GET'])
 @jwt_required()
 def list_document_rules():
-    """List document rules."""
+    """List document rules with optional template filter.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: template_id
+        in: query
+        type: integer
+        required: false
+        description: Filter rules by document template ID
+    responses:
+      200:
+        description: List of document rules
+        schema:
+          type: object
+          properties:
+            rules:
+              type: array
+              items:
+                type: object
+            count:
+              type: integer
+    """
     template_id = request.args.get('template_id', type=int)
     query = DocumentRule.query
 
@@ -195,7 +389,37 @@ def list_document_rules():
 @admin_bp.route('/document-rules', methods=['POST'])
 @jwt_required()
 def create_document_rule():
-    """Create a new document rule."""
+    """Create a new document rule. Requires admin.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            document_template_id:
+              type: integer
+            conditions:
+              type: object
+              description: JSON conditions for when this rule applies
+            applicability:
+              type: string
+              default: required
+              enum: [required, optional, not_applicable]
+            priority:
+              type: integer
+              default: 0
+    responses:
+      201:
+        description: Document rule created
+      400:
+        description: No data provided
+      403:
+        description: Admin access required
+    """
     err = _require_admin()
     if err:
         return err
@@ -223,7 +447,37 @@ def create_document_rule():
 @admin_bp.route('/document-rules/<int:rule_id>', methods=['PUT'])
 @jwt_required()
 def update_document_rule(rule_id):
-    """Update a document rule."""
+    """Update a document rule. Requires admin.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: rule_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            conditions:
+              type: object
+            applicability:
+              type: string
+            priority:
+              type: integer
+    responses:
+      200:
+        description: Updated document rule
+      400:
+        description: No data provided
+      403:
+        description: Admin access required
+      404:
+        description: Rule not found
+    """
     err = _require_admin()
     if err:
         return err
@@ -251,7 +505,30 @@ def update_document_rule(rule_id):
 @admin_bp.route('/document-rules/<int:rule_id>', methods=['DELETE'])
 @jwt_required()
 def delete_document_rule(rule_id):
-    """Delete a document rule."""
+    """Delete a document rule. Requires admin.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: rule_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Rule deleted
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            message:
+              type: string
+      403:
+        description: Admin access required
+      404:
+        description: Rule not found
+    """
     err = _require_admin()
     if err:
         return err
@@ -266,7 +543,23 @@ def delete_document_rule(rule_id):
 @admin_bp.route('/users', methods=['GET'])
 @jwt_required()
 def list_users():
-    """List all users."""
+    """List all users.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of all users
+        schema:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/definitions/User'
+            count:
+              type: integer
+    """
     users = User.query.order_by(User.name).all()
     return jsonify({
         'users': [u.to_dict() for u in users],
@@ -281,7 +574,23 @@ def list_users():
 @admin_bp.route('/intake-paths', methods=['GET'])
 @jwt_required()
 def list_intake_paths():
-    """List all intake paths (from Excel import)."""
+    """List all intake paths (imported from Excel rules workbook).
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of intake paths
+        schema:
+          type: object
+          properties:
+            paths:
+              type: array
+              items:
+                type: object
+            count:
+              type: integer
+    """
     paths = IntakePath.query.order_by(IntakePath.path_id).all()
     return jsonify({
         'paths': [p.to_dict() for p in paths],
@@ -296,7 +605,23 @@ def list_intake_paths():
 @admin_bp.route('/advisory-triggers', methods=['GET'])
 @jwt_required()
 def list_advisory_triggers():
-    """List all advisory trigger rules."""
+    """List all advisory trigger rules.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: List of advisory trigger rules
+        schema:
+          type: object
+          properties:
+            triggers:
+              type: array
+              items:
+                type: object
+            count:
+              type: integer
+    """
     triggers = AdvisoryTriggerRule.query.order_by(AdvisoryTriggerRule.trigger_id).all()
     return jsonify({
         'triggers': [t.to_dict() for t in triggers],
@@ -340,7 +665,29 @@ ADV_GATE_OPTIONS = [
 @admin_bp.route('/advisory-config', methods=['GET'])
 @jwt_required()
 def get_advisory_config():
-    """Return the advisory pipeline configuration matrix."""
+    """Return the advisory pipeline configuration matrix.
+    ---
+    tags:
+      - Admin
+    responses:
+      200:
+        description: Advisory configuration matrix with labels and options
+        schema:
+          type: object
+          properties:
+            configs:
+              type: array
+              items:
+                type: object
+            pipeline_labels:
+              type: object
+            team_labels:
+              type: object
+            gate_options:
+              type: array
+              items:
+                type: object
+    """
     configs = AdvisoryPipelineConfig.query.order_by(
         AdvisoryPipelineConfig.pipeline_type,
         AdvisoryPipelineConfig.team,
@@ -357,7 +704,51 @@ def get_advisory_config():
 @admin_bp.route('/advisory-config', methods=['PUT'])
 @jwt_required()
 def update_advisory_config():
-    """Bulk update advisory pipeline configuration matrix."""
+    """Bulk update advisory pipeline configuration matrix. Requires admin.
+    ---
+    tags:
+      - Admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - configs
+          properties:
+            configs:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  is_enabled:
+                    type: boolean
+                  sla_days:
+                    type: integer
+                  blocks_gate:
+                    type: string
+                  threshold_min:
+                    type: number
+    responses:
+      200:
+        description: Updated advisory configuration
+        schema:
+          type: object
+          properties:
+            configs:
+              type: array
+              items:
+                type: object
+            success:
+              type: boolean
+      400:
+        description: No configs data provided
+      403:
+        description: Admin access required
+    """
     err = _require_admin()
     if err:
         return err
@@ -401,7 +792,35 @@ def update_advisory_config():
 @admin_bp.route('/import-rules', methods=['POST'])
 @jwt_required()
 def import_rules():
-    """Upload and import Excel rules workbook."""
+    """Upload and import Excel rules workbook (.xlsx). Requires admin.
+    ---
+    tags:
+      - Admin
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: Excel workbook (.xlsx) with rules sheets
+    responses:
+      200:
+        description: Import results
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            paths_imported:
+              type: integer
+            triggers_imported:
+              type: integer
+      400:
+        description: Invalid file or import error
+      403:
+        description: Admin access required
+    """
     err = _require_admin()
     if err:
         return err

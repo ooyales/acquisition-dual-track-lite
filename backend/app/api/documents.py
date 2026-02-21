@@ -18,7 +18,35 @@ documents_bp = Blueprint('documents', __name__)
 @documents_bp.route('/request/<int:request_id>', methods=['GET'])
 @jwt_required()
 def list_documents(request_id):
-    """Get document checklist for a request, grouped by gate."""
+    """Get document checklist for a request, grouped by gate.
+    ---
+    tags:
+      - Documents
+    parameters:
+      - name: request_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Document checklist with grouping
+        schema:
+          type: object
+          properties:
+            documents:
+              type: array
+              items:
+                $ref: '#/definitions/PackageDocument'
+            grouped:
+              type: object
+              description: Documents grouped by required_before_gate
+            total:
+              type: integer
+            required:
+              type: integer
+            complete:
+              type: integer
+    """
     docs = PackageDocument.query.filter_by(request_id=request_id).all()
 
     # Group by required_before_gate
@@ -42,7 +70,49 @@ def list_documents(request_id):
 @documents_bp.route('/<int:doc_id>', methods=['PUT'])
 @jwt_required()
 def update_document(doc_id):
-    """Update document status, content, or assignment."""
+    """Update document status, content, or assignment.
+    ---
+    tags:
+      - Documents
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              enum: [not_started, in_progress, complete, uploaded, not_required]
+            content:
+              type: string
+            assigned_to:
+              type: string
+            due_date:
+              type: string
+              format: date
+            completed_date:
+              type: string
+              format: date
+            notes:
+              type: string
+            actor:
+              type: string
+              description: Name of the user making the update
+    responses:
+      200:
+        description: Updated document
+        schema:
+          $ref: '#/definitions/PackageDocument'
+      400:
+        description: No data provided
+      404:
+        description: Document not found
+    """
     doc = PackageDocument.query.get_or_404(doc_id)
     data = request.get_json()
     if not data:
@@ -74,7 +144,44 @@ def update_document(doc_id):
 @documents_bp.route('/<int:doc_id>/draft-ai', methods=['POST'])
 @jwt_required()
 def draft_ai(doc_id):
-    """Trigger AI draft generation for a document."""
+    """Trigger AI draft generation for a document.
+    ---
+    tags:
+      - Documents
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+              description: Custom prompt for AI generation
+    responses:
+      200:
+        description: AI draft generated
+        schema:
+          type: object
+          properties:
+            document:
+              $ref: '#/definitions/PackageDocument'
+            ai_result:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                text:
+                  type: string
+      400:
+        description: Document type does not support AI drafting
+      404:
+        description: Document or request not found
+    """
     doc = PackageDocument.query.get_or_404(doc_id)
 
     if not doc.template or not doc.template.ai_assistable:
@@ -127,7 +234,34 @@ def draft_ai(doc_id):
 @documents_bp.route('/<int:doc_id>/review-ai', methods=['POST'])
 @jwt_required()
 def review_ai(doc_id):
-    """Trigger AI compliance review for a document."""
+    """Trigger AI compliance review for a document.
+    ---
+    tags:
+      - Documents
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: AI review results
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            issues:
+              type: array
+              items:
+                type: object
+            score:
+              type: integer
+      400:
+        description: Document has no content to review
+      404:
+        description: Document not found
+    """
     doc = PackageDocument.query.get_or_404(doc_id)
 
     if not doc.content:
@@ -156,7 +290,34 @@ TOGGLE_ROLES = {'admin', 'budget', 'ko', 'branch_chief', 'cto', 'cio'}
 @documents_bp.route('/<int:doc_id>/toggle-required', methods=['POST'])
 @jwt_required()
 def toggle_required(doc_id):
-    """Toggle a document between required and not-required."""
+    """Toggle a document between required and not-required.
+    ---
+    tags:
+      - Documents
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            is_required:
+              type: boolean
+              description: Explicit override; if omitted, toggles current state
+    responses:
+      200:
+        description: Updated document
+        schema:
+          $ref: '#/definitions/PackageDocument'
+      403:
+        description: Role not authorized to toggle
+      404:
+        description: Document not found
+    """
     claims = get_jwt()
     role = claims.get('role', '')
     if role not in TOGGLE_ROLES:
@@ -193,7 +354,32 @@ def toggle_required(doc_id):
 @documents_bp.route('/<int:doc_id>/upload', methods=['POST'])
 @jwt_required()
 def upload_document_file(doc_id):
-    """Upload a file for a document."""
+    """Upload a file for a document.
+    ---
+    tags:
+      - Documents
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: Document file (PDF, DOCX, XLSX, etc.)
+    responses:
+      200:
+        description: File uploaded successfully
+        schema:
+          $ref: '#/definitions/PackageDocument'
+      400:
+        description: No file provided or invalid file type
+      404:
+        description: Document not found
+    """
     claims = get_jwt()
     doc = PackageDocument.query.get_or_404(doc_id)
 
@@ -231,7 +417,21 @@ def upload_document_file(doc_id):
 @documents_bp.route('/<int:doc_id>/download', methods=['GET'])
 @jwt_required()
 def download_document_file(doc_id):
-    """Download an uploaded document file."""
+    """Download an uploaded document file.
+    ---
+    tags:
+      - Documents
+    parameters:
+      - name: doc_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: File download
+      404:
+        description: No file uploaded for this document
+    """
     doc = PackageDocument.query.get_or_404(doc_id)
     if not doc.uploaded_filepath or not os.path.exists(doc.uploaded_filepath):
         return jsonify({'error': 'No file uploaded for this document'}), 404

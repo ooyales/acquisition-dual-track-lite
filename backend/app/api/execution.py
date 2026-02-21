@@ -32,7 +32,40 @@ def _generate_exec_number(exec_type):
 @execution_bp.route('', methods=['GET'])
 @jwt_required()
 def list_executions():
-    """List execution requests."""
+    """List CLIN execution requests with optional filters.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: type
+        in: query
+        type: string
+        required: false
+        enum: [odc, travel]
+        description: Filter by execution type
+      - name: status
+        in: query
+        type: string
+        required: false
+        description: Filter by status
+      - name: contract_id
+        in: query
+        type: integer
+        required: false
+        description: Filter by parent contract
+    responses:
+      200:
+        description: List of execution requests
+        schema:
+          type: object
+          properties:
+            executions:
+              type: array
+              items:
+                $ref: '#/definitions/CLINExecutionRequest'
+            count:
+              type: integer
+    """
     query = CLINExecutionRequest.query
 
     exec_type = request.args.get('type')
@@ -57,7 +90,23 @@ def list_executions():
 @execution_bp.route('/<int:exec_id>', methods=['GET'])
 @jwt_required()
 def get_execution(exec_id):
-    """Get execution request detail."""
+    """Get execution request detail.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Execution request details
+        schema:
+          $ref: '#/definitions/CLINExecutionRequest'
+      404:
+        description: Execution request not found
+    """
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
     return jsonify(exe.to_dict())
 
@@ -65,7 +114,61 @@ def get_execution(exec_id):
 @execution_bp.route('', methods=['POST'])
 @jwt_required()
 def create_execution():
-    """Create a new execution request."""
+    """Create a new CLIN execution request (ODC or Travel).
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            execution_type:
+              type: string
+              default: odc
+              enum: [odc, travel]
+            contract_id:
+              type: integer
+            clin_id:
+              type: integer
+            title:
+              type: string
+            description:
+              type: string
+            estimated_cost:
+              type: number
+              default: 0
+            need_by_date:
+              type: string
+              format: date
+            odc_product_name:
+              type: string
+            odc_vendor:
+              type: string
+            odc_quote_number:
+              type: string
+            travel_traveler_name:
+              type: string
+            travel_destination:
+              type: string
+            travel_purpose:
+              type: string
+            travel_departure_date:
+              type: string
+              format: date
+            travel_return_date:
+              type: string
+              format: date
+    responses:
+      201:
+        description: Execution request created
+        schema:
+          $ref: '#/definitions/CLINExecutionRequest'
+      400:
+        description: No data provided
+    """
     user_id = get_jwt_identity()
     data = request.get_json()
     if not data:
@@ -114,7 +217,46 @@ def create_execution():
 @execution_bp.route('/<int:exec_id>', methods=['PUT'])
 @jwt_required()
 def update_execution(exec_id):
-    """Update an execution request."""
+    """Update an execution request.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            title:
+              type: string
+            description:
+              type: string
+            estimated_cost:
+              type: number
+            clin_id:
+              type: integer
+            contract_id:
+              type: integer
+            need_by_date:
+              type: string
+              format: date
+            notes:
+              type: string
+    responses:
+      200:
+        description: Updated execution request
+        schema:
+          $ref: '#/definitions/CLINExecutionRequest'
+      400:
+        description: No data provided
+      404:
+        description: Execution request not found
+    """
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
     data = request.get_json()
     if not data:
@@ -146,7 +288,39 @@ def update_execution(exec_id):
 @execution_bp.route('/<int:exec_id>/submit', methods=['POST'])
 @jwt_required()
 def submit_execution(exec_id):
-    """Submit execution request with CLIN balance check."""
+    """Submit execution request with CLIN balance check.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Execution submitted with funding check
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            execution:
+              $ref: '#/definitions/CLINExecutionRequest'
+            funding:
+              type: object
+              properties:
+                sufficient:
+                  type: boolean
+                available:
+                  type: number
+                shortfall:
+                  type: number
+      400:
+        description: Cannot submit from current status
+      404:
+        description: Execution request not found
+    """
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
 
     if exe.status != 'draft':
@@ -178,7 +352,42 @@ def submit_execution(exec_id):
 @execution_bp.route('/<int:exec_id>/approve', methods=['POST'])
 @jwt_required()
 def approve_execution(exec_id):
-    """PM or CTO approval action."""
+    """PM or CTO approval action on an execution request.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            action:
+              type: string
+              default: approve
+              enum: [approve, reject, return]
+            comments:
+              type: string
+    responses:
+      200:
+        description: Approval action processed
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            execution:
+              $ref: '#/definitions/CLINExecutionRequest'
+      400:
+        description: No pending approval for your role
+      404:
+        description: Execution request not found
+    """
     user_id = get_jwt_identity()
     claims = get_jwt()
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
@@ -241,7 +450,50 @@ def approve_execution(exec_id):
 @execution_bp.route('/<int:exec_id>/invoice', methods=['POST'])
 @jwt_required()
 def record_invoice(exec_id):
-    """Record invoice receipt."""
+    """Record invoice receipt for an execution request.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          properties:
+            invoice_number:
+              type: string
+            invoice_date:
+              type: string
+              format: date
+            actual_cost:
+              type: number
+            travel_actual_airfare:
+              type: number
+            travel_actual_lodging:
+              type: number
+            travel_actual_per_diem:
+              type: number
+            travel_actual_rental_car:
+              type: number
+            travel_actual_other:
+              type: number
+            travel_actual_total:
+              type: number
+    responses:
+      200:
+        description: Invoice recorded
+        schema:
+          $ref: '#/definitions/CLINExecutionRequest'
+      400:
+        description: No data provided
+      404:
+        description: Execution request not found
+    """
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
     data = request.get_json()
     if not data:
@@ -268,7 +520,31 @@ def record_invoice(exec_id):
 @execution_bp.route('/<int:exec_id>/validate', methods=['POST'])
 @jwt_required()
 def validate_execution(exec_id):
-    """COR validation of goods/services received."""
+    """COR validation of goods/services received.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: false
+        schema:
+          type: object
+          properties:
+            notes:
+              type: string
+    responses:
+      200:
+        description: Execution validated and marked complete
+        schema:
+          $ref: '#/definitions/CLINExecutionRequest'
+      404:
+        description: Execution request not found
+    """
     user_id = get_jwt_identity()
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
     data = request.get_json() or {}
@@ -285,7 +561,34 @@ def validate_execution(exec_id):
 @execution_bp.route('/<int:exec_id>/request-funding', methods=['POST'])
 @jwt_required()
 def request_funding(exec_id):
-    """Auto-create an acquisition request for incremental funding when CLIN balance is insufficient."""
+    """Auto-create an acquisition request for incremental funding when CLIN balance is insufficient.
+    ---
+    tags:
+      - Execution
+    parameters:
+      - name: exec_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      201:
+        description: Funding request created
+        schema:
+          type: object
+          properties:
+            success:
+              type: boolean
+            funding_request_id:
+              type: integer
+            funding_request_number:
+              type: string
+            execution:
+              $ref: '#/definitions/CLINExecutionRequest'
+      400:
+        description: Funding action not required or already created
+      404:
+        description: Execution request not found
+    """
     user_id = get_jwt_identity()
     exe = CLINExecutionRequest.query.get_or_404(exec_id)
 
